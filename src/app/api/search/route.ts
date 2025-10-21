@@ -136,6 +136,8 @@ export const POST = async (req: Request) => {
         ) => {
           let message = '';
           let sources: any[] = [];
+          let images: any[] = [];
+          let videos: any[] = [];
 
           emitter.on('data', (data: string) => {
             try {
@@ -144,6 +146,10 @@ export const POST = async (req: Request) => {
                 message += parsedData.data;
               } else if (parsedData.type === 'sources') {
                 sources = parsedData.data;
+              } else if (parsedData.type === 'images') {
+                images = parsedData.data;
+              } else if (parsedData.type === 'videos') {
+                videos = parsedData.data;
               }
             } catch (error) {
               reject(
@@ -156,7 +162,12 @@ export const POST = async (req: Request) => {
           });
 
           emitter.on('end', () => {
-            resolve(Response.json({ message, sources }, { status: 200 }));
+            resolve(Response.json({ 
+              message, 
+              sources, 
+              images: images.length > 0 ? images : undefined,
+              videos: videos.length > 0 ? videos : undefined
+            }, { status: 200 }));
           });
 
           emitter.on('error', (error: any) => {
