@@ -65,6 +65,8 @@ jobs:
             --exclude='.github' \
             --exclude='.next/cache' \
             --exclude='.aws-credentials' \
+            --exclude='deploy.tar.gz' \
+            --warning=no-file-changed \
             .
           ls -lh deploy.tar.gz
 
