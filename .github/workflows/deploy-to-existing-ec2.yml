@@ -66,8 +66,7 @@ jobs:
             --exclude='.next/cache' \
             --exclude='.aws-credentials' \
             --exclude='deploy.tar.gz' \
-            --warning=no-file-changed \
-            .
+            . || [ $? -eq 1 ]
           ls -lh deploy.tar.gz
 
       - name: Copy package to EC2
