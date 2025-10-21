@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: 'perplexica',
-      script: 'npm',
-      args: 'start',
+      script: 'node',
+      args: '.next/standalone/server.js',
       cwd: '/var/www/perplexica',
       instances: 1,
       autorestart: true,
