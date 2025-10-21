@@ -122,3 +122,5 @@ print_warning "Important: Make sure your EC2 key pair 'perplexica-key' exists in
 print_warning "Important: Ensure your domain DNS is pointing to the EC2 instance"
 echo
 print_success "GitHub Secrets setup completed! 🚀"
+
+
