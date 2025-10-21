@@ -5,6 +5,7 @@ import {
   Pencil,
   ScanEye,
   SwatchBook,
+  Brain,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -53,6 +54,12 @@ const focusModes = [
     title: 'Reddit',
     description: 'Search for discussions and opinions',
     icon: <SiReddit className="h-5 w-auto mr-0.5" />,
+  },
+  {
+    key: 'aiAgentReview',
+    title: 'AI Agent Review',
+    description: 'Find and review AI agents with images and videos',
+    icon: <Brain size={20} />,
   },
 ];
 

@@ -56,4 +56,13 @@ export const searchHandlers: Record<string, MetaSearchAgent> = {
     rerankThreshold: 0.3,
     searchWeb: true,
   }),
+  aiAgentReview: new MetaSearchAgent({
+    activeEngines: ['google', 'bing', 'duckduckgo'],
+    queryGeneratorPrompt: prompts.aiAgentReviewRetrieverPrompt,
+    responsePrompt: prompts.aiAgentReviewResponsePrompt,
+    queryGeneratorFewShots: prompts.aiAgentReviewRetrieverFewShots,
+    rerank: true,
+    rerankThreshold: 0.3,
+    searchWeb: true,
+  }),
 };

@@ -4,10 +4,20 @@ import {
   webSearchRetrieverPrompt,
 } from './webSearch';
 import { writingAssistantPrompt } from './writingAssistant';
+import {
+  aiAgentReviewResponsePrompt,
+  aiAgentReviewRetrieverPrompt,
+  aiAgentReviewRetrieverFewShots,
+} from './aiAgentReview';
 
-export default {
+const prompts = {
   webSearchResponsePrompt,
   webSearchRetrieverPrompt,
   webSearchRetrieverFewShots,
   writingAssistantPrompt,
+  aiAgentReviewResponsePrompt,
+  aiAgentReviewRetrieverPrompt,
+  aiAgentReviewRetrieverFewShots,
 };
+
+export default prompts;

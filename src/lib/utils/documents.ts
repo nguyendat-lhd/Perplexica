@@ -84,9 +84,9 @@ export const getDocumentsFromLinks = async ({ links }: { links: string[] }) => {
         );
         docs.push(
           new Document({
-            pageContent: `Failed to retrieve content from the link: ${err}`,
+            pageContent: `Không thể truy cập nội dung từ link này. Vui lòng thử lại sau.`,
             metadata: {
-              title: 'Failed to retrieve content',
+              title: 'Không thể tải nội dung',
               url: link,
             },
           }),

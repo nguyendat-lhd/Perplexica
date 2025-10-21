@@ -17,6 +17,7 @@ import Rewrite from './MessageActions/Rewrite';
 import MessageSources from './MessageSources';
 import SearchImages from './SearchImages';
 import SearchVideos from './SearchVideos';
+import AIAgentReviewWidget from './AIAgentReviewWidget';
 import { useSpeech } from 'react-text-to-speech';
 import ThinkBox from './ThinkBox';
 import { useChat, Section } from '@/lib/hooks/useChat';
@@ -45,7 +46,7 @@ const MessageBox = ({
   dividerRef?: MutableRefObject<HTMLDivElement | null>;
   isLast: boolean;
 }) => {
-  const { loading, chatTurns, sendMessage, rewrite } = useChat();
+  const { loading, chatTurns, sendMessage, rewrite, focusMode } = useChat();
 
   const parsedMessage = section.parsedAssistantMessage || '';
   const speechMessage = section.speechMessage || '';
@@ -152,6 +153,18 @@ const MessageBox = ({
                       </button>
                     </div>
                   </div>
+                )}
+
+                {/* AI Agent Review Widget for aiAgentReview mode */}
+                {focusMode === 'aiAgentReview' && 
+                 section.sourceMessage && 
+                 section.sourceMessage.sources.length > 0 && (
+                  <AIAgentReviewWidget
+                    messageId={section.assistantMessage?.messageId || ''}
+                    sources={section.sourceMessage.sources}
+                    chatHistory={chatTurns.slice(0, sectionIndex * 2)}
+                    userQuery={section.userMessage.content}
+                  />
                 )}
 
                 {isLast &&
