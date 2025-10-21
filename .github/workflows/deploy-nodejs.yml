@@ -16,9 +16,9 @@ on:
 
 env:
   AWS_REGION: ap-southeast-1
-  STACK_NAME_STAGING: perplexica-staging
-  STACK_NAME_PRODUCTION: perplexica-prod
-  KEY_NAME: perplexica-key
+  STACK_NAME_STAGING: trangvang-perplexica-staging
+  STACK_NAME_PRODUCTION: trangvang-perplexica-prod
+  KEY_NAME: trangvang-perplexica-key
 
 jobs:
   # Deploy to Staging
@@ -82,7 +82,7 @@ jobs:
                 ParameterKey=VolumeSize,ParameterValue=20 \
                 ParameterKey=SSHLocation,ParameterValue=0.0.0.0/0 \
                 ParameterKey=AllocateElasticIP,ParameterValue=true \
-                ParameterKey=DomainName,ParameterValue=staging.perplexica.trangvang.ai \
+                ParameterKey=DomainName,ParameterValue=staging-perplexica.trangvang.ai \
                 ParameterKey=EmailAddress,ParameterValue=admin@trangvang.ai \
               --region ${{ env.AWS_REGION }} \
               --capabilities CAPABILITY_IAM
@@ -171,7 +171,7 @@ jobs:
         run: |
           # Wait for service to be ready
           for i in {1..30}; do
-            if curl -f -s "https://staging.perplexica.trangvang.ai/api/config" > /dev/null; then
+            if curl -f -s "https://staging-perplexica.trangvang.ai/api/config" > /dev/null; then
               echo "✅ Staging health check passed"
               break
             fi
@@ -186,7 +186,7 @@ jobs:
           channel: '#deployments'
           text: |
             🚀 Staging deployment successful!
-            URL: https://staging.perplexica.trangvang.ai
+            URL: https://staging-perplexica.trangvang.ai
             Commit: ${{ github.sha }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -7,9 +7,9 @@ set -e
 
 # Configuration
 AWS_REGION="ap-southeast-1"
-STACK_NAME_STAGING="perplexica-staging"
-STACK_NAME_PRODUCTION="perplexica-prod"
-KEY_NAME="perplexica-key"
+STACK_NAME_STAGING="trangvang-perplexica-staging"
+STACK_NAME_PRODUCTION="trangvang-perplexica-prod"
+KEY_NAME="trangvang-perplexica-key"
 
 # Colors for output
 RED='\033[0;31m'

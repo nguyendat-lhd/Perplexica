@@ -7,9 +7,9 @@ set -e
 
 # Configuration
 AWS_REGION="ap-southeast-1"
-STACK_NAME_STAGING="perplexica-staging"
-STACK_NAME_PRODUCTION="perplexica-prod"
-KEY_NAME="perplexica-key"
+STACK_NAME_STAGING="trangvang-perplexica-staging"
+STACK_NAME_PRODUCTION="trangvang-perplexica-prod"
+KEY_NAME="trangvang-perplexica-key"
 APP_DIR="/opt/Perplexica"
 SERVICE_USER="ubuntu"
 
@@ -82,7 +82,7 @@ fi
 # Set environment-specific variables
 if [[ "$ENVIRONMENT" == "staging" ]]; then
     STACK_NAME=$STACK_NAME_STAGING
-    DOMAIN_NAME="staging.perplexica.trangvang.ai"
+    DOMAIN_NAME="staging-perplexica.trangvang.ai"
     INSTANCE_TYPE="t3.small"
     VOLUME_SIZE="20"
 else

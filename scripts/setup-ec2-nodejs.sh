@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-KEY_NAME="perplexica-key"
+KEY_NAME="trangvang-perplexica-key"
 APP_DIR="/opt/Perplexica"
 SERVICE_USER="ubuntu"
 
