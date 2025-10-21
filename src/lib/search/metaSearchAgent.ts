@@ -22,7 +22,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import computeSimilarity from '../utils/computeSimilarity';
 import formatChatHistoryAsString from '../utils/formatHistory';
-import eventEmitter from 'events';
+import { EventEmitter } from 'events';
 import { StreamEvent } from '@langchain/core/tracers/log_stream';
 
 export interface MetaSearchAgentType {
@@ -34,7 +34,7 @@ export interface MetaSearchAgentType {
     optimizationMode: 'speed' | 'balanced' | 'quality',
     fileIds: string[],
     systemInstructions: string,
-  ) => Promise<eventEmitter>;
+  ) => Promise<EventEmitter>;
 }
 
 interface Config {
@@ -446,7 +446,7 @@ class MetaSearchAgent implements MetaSearchAgentType {
 
   private async handleStream(
     stream: AsyncGenerator<StreamEvent, any, any>,
-    emitter: eventEmitter,
+    emitter: EventEmitter,
   ) {
     for await (const event of stream) {
       if (
@@ -485,7 +485,7 @@ class MetaSearchAgent implements MetaSearchAgentType {
     fileIds: string[],
     systemInstructions: string,
   ) {
-    const emitter = new eventEmitter();
+    const emitter = new EventEmitter();
 
     const answeringChain = await this.createAnsweringChain(
       llm,

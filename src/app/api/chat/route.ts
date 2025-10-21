@@ -313,12 +313,17 @@ export const POST = async (req: Request) => {
       }
     });
 
+    console.log('Requested focus mode:', body.focusMode);
+    console.log('Available handlers:', Object.keys(searchHandlers));
+    
     const handler = searchHandlers[body.focusMode];
 
     if (!handler) {
       return Response.json(
         {
           message: 'Invalid focus mode',
+          availableModes: Object.keys(searchHandlers),
+          requestedMode: body.focusMode
         },
         { status: 400 },
       );

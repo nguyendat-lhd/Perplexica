@@ -1,5 +1,5 @@
-import { searchHandlers } from '@/lib/search';
-import { getAvailableChatModelProviders, getAvailableEmbeddingModelProviders } from '@/lib/providers';
+import { searchHandlers } from '../../../lib/search';
+import { getAvailableChatModelProviders, getAvailableEmbeddingModelProviders } from '../../../lib/providers';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Embeddings } from '@langchain/core/embeddings';
 import { AIMessage, BaseMessage, HumanMessage } from '@langchain/core/messages';
@@ -8,9 +8,9 @@ import {
   getCustomOpenaiApiKey,
   getCustomOpenaiApiUrl,
   getCustomOpenaiModelName,
-} from '@/lib/config';
-import handleImageSearch from '@/lib/chains/imageSearchAgent';
-import handleVideoSearch from '@/lib/chains/videoSearchAgent';
+} from '../../../lib/config';
+import handleImageSearch from '../../../lib/chains/imageSearchAgent';
+import handleVideoSearch from '../../../lib/chains/videoSearchAgent';
 
 interface AgentMetadata {
   name: string;
@@ -43,11 +43,11 @@ function extractAgentMetadata(query: string, sources: any[], message?: string): 
   let seoTitle = '';
 
   if (message) {
-    // Try to extract JSON metadata from the end of the message
-    const jsonMatch = message.match(/```json\s*\{[^}]*\}\s*```/s);
+    // Try to extract JSON metadata from the message
+    const jsonMatch = message.match(/```json\s*(\{[\s\S]*?\})\s*```/);
     if (jsonMatch) {
       try {
-        const jsonStr = jsonMatch[0].replace(/```json\s*|\s*```/g, '');
+        const jsonStr = jsonMatch[1];
         const metadata = JSON.parse(jsonStr);
         excerpt = metadata.excerpt || '';
         seoDescription = metadata.seo_description || '';
@@ -232,6 +232,8 @@ function extractUrlInfo(sources: any[]): { website?: string; logo?: string } {
 interface ChatModel {
   provider: string;
   name: string;
+  customOpenAIKey?: string;
+  customOpenAIBaseURL?: string;
 }
 
 interface EmbeddingModel {
@@ -324,10 +326,10 @@ export const POST = async (req: Request) => {
       );
     }
 
-    const searchHandler = searchHandlers['aiAgentReview'];
+    const searchHandler = searchHandlers['aiAgentReviewApi'];
 
     if (!searchHandler) {
-      return Response.json({ message: 'AI Agent Review not available' }, { status: 400 });
+      return Response.json({ message: 'AI Agent Review API not available' }, { status: 400 });
     }
 
     // Get AI Agent Review
@@ -412,12 +414,25 @@ export const POST = async (req: Request) => {
     // Extract metadata from sources, query and message
     const metadata = extractAgentMetadata(body.query, reviewResult.sources, reviewResult.message);
 
+    // Try to parse JSON from the message to extract structured data
+    let structuredData = null;
+    try {
+      const jsonMatch = reviewResult.message.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+      if (jsonMatch) {
+        structuredData = JSON.parse(jsonMatch[1]);
+      }
+    } catch (error) {
+      console.error('Error parsing JSON from AI agent review response:', error);
+      // If JSON parsing fails, we'll still return the message as is
+    }
+
     return Response.json({
       message: reviewResult.message,
       sources: reviewResult.sources,
       images: images.length > 0 ? images : [],
       videos: videos.length > 0 ? videos : [],
       metadata: metadata,
+      structured_data: structuredData, // Add structured data if available
     }, { status: 200 });
 
   } catch (err) {

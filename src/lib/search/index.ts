@@ -1,5 +1,16 @@
-import MetaSearchAgent from '@/lib/search/metaSearchAgent';
+import MetaSearchAgent from './metaSearchAgent';
 import prompts from '../prompts';
+
+console.log('Available focus modes:', Object.keys({
+  webSearch: 'webSearch',
+  academicSearch: 'academicSearch', 
+  writingAssistant: 'writingAssistant',
+  wolframAlphaSearch: 'wolframAlphaSearch',
+  youtubeSearch: 'youtubeSearch',
+  redditSearch: 'redditSearch',
+  aiAgentReview: 'aiAgentReview',
+  aiAgentReviewApi: 'aiAgentReviewApi'
+}));
 
 export const searchHandlers: Record<string, MetaSearchAgent> = {
   webSearch: new MetaSearchAgent({
@@ -61,6 +72,15 @@ export const searchHandlers: Record<string, MetaSearchAgent> = {
     queryGeneratorPrompt: prompts.aiAgentReviewRetrieverPrompt,
     responsePrompt: prompts.aiAgentReviewResponsePrompt,
     queryGeneratorFewShots: prompts.aiAgentReviewRetrieverFewShots,
+    rerank: true,
+    rerankThreshold: 0.3,
+    searchWeb: true,
+  }),
+  aiAgentReviewApi: new MetaSearchAgent({
+    activeEngines: ['google', 'bing', 'duckduckgo'],
+    queryGeneratorPrompt: prompts.aiAgentReviewApiRetrieverPrompt,
+    responsePrompt: prompts.aiAgentReviewApiResponsePrompt,
+    queryGeneratorFewShots: prompts.aiAgentReviewApiRetrieverFewShots,
     rerank: true,
     rerankThreshold: 0.3,
     searchWeb: true,

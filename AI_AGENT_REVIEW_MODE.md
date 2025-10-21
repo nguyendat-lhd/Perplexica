@@ -100,3 +100,4 @@ src/components/MessageInputActions/Focus.tsx # Thêm option mới
 - Thêm tính năng rating và review từ cộng đồng
 - Tích hợp với các API AI agent để test trực tiếp
 - Thêm tính năng so sánh nhiều AI agent cùng lúc
+
