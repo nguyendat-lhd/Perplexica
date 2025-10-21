@@ -4,7 +4,7 @@ module.exports = {
       name: 'perplexica',
       script: 'npm',
       args: 'start',
-      cwd: '/opt/Perplexica',
+      cwd: '/var/www/perplexica',
       instances: 1,
       autorestart: true,
       watch: false,
