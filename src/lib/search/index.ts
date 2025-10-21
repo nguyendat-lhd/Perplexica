@@ -8,8 +8,8 @@ console.log('Available focus modes:', Object.keys({
   wolframAlphaSearch: 'wolframAlphaSearch',
   youtubeSearch: 'youtubeSearch',
   redditSearch: 'redditSearch',
-  aiAgentReview: 'aiAgentReview',
-  aiAgentReviewApi: 'aiAgentReviewApi'
+  aiAgentReview: 'aiAgentReview'
+  // aiAgentReviewApi: Internal API handler only
 }));
 
 export const searchHandlers: Record<string, MetaSearchAgent> = {
@@ -79,7 +79,7 @@ export const searchHandlers: Record<string, MetaSearchAgent> = {
   aiAgentReviewApi: new MetaSearchAgent({
     activeEngines: ['google', 'bing', 'duckduckgo'],
     queryGeneratorPrompt: prompts.aiAgentReviewApiRetrieverPrompt,
-    responsePrompt: prompts.aiAgentReviewApiResponsePrompt,
+    responsePrompt: prompts.aiAgentReviewResponsePrompt, // Use same format as Chat UI
     queryGeneratorFewShots: prompts.aiAgentReviewApiRetrieverFewShots,
     rerank: true,
     rerankThreshold: 0.3,

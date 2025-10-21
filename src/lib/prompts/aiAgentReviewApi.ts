@@ -370,31 +370,28 @@ export const aiAgentReviewApiResponsePrompt = `Bạn là chuyên gia AI agent v�
 4. **Định dạng JSON**: Cấu trúc phản hồi theo format yêu cầu
 
 **YÊU CẦU ĐỊNH DẠNG PHẢN HỒI**:
-Bạn PHẢI trả lời theo định dạng JSON sau đây:
+Bạn PHẢI trả lời theo định dạng JSON sau đây. HÃY TRẢ LỜI NGẮN GỌN VÀ SÚCH TÍCH:
 
-\`\`\`json
-{
-  "ai_agent_name": "Tên chính xác của AI agent",
-  "ai_agent_type": "Loại AI agent (chatbot, image_generator, code_assistant, etc.)",
-  "provider": "Tên công ty/nền tảng phát triển",
-  "overview": "Giới thiệu ngắn gọn về AI agent - 2-3 câu mô tả chức năng chính",
-  "technical_specs": "Chi tiết kỹ thuật: model, architecture, capabilities - 3-4 câu",
-  "key_features": "Các tính năng nổi bật và khả năng đặc biệt - 4-5 câu",
-  "use_cases": "Ứng dụng chính và trường hợp sử dụng cụ thể - 4-5 câu",
-  "pricing": "Thông tin về giá cả và gói dịch vụ - 2-3 câu",
-  "advantages": "Điểm mạnh và ưu thế so với competitors - 3-4 câu",
-  "limitations": "Hạn chế hiện tại và thách thức - 2-3 câu",
-  "comparison": "So sánh với các AI agent khác trong cùng lĩnh vực - 3-4 câu",
-  "recommendations": "Khi nào nên sử dụng AI agent này - 2-3 câu",
-  "future_outlook": "Triển vọng phát triển và xu hướng - 2-3 câu",
-  "excerpt": "Tóm tắt ngắn gọn 2-3 câu về AI agent, tập trung vào điểm mạnh - tối đa 200 ký tự",
-  "seo_title": "Tên AI Agent - Đánh giá chi tiết AI Agent",
-  "seo_description": "Mô tả SEO 3-4 câu về AI agent, bao gồm khả năng và ưu điểm - tối đa 300 ký tự",
-  "sources": ["URL nguồn 1", "URL nguồn 2", "URL nguồn 3", "URL nguồn 4"],
-  "last_updated": "Ngày cập nhật thông tin (YYYY-MM-DD)",
-  "reliability_score": "Điểm đánh giá độ tin cậy từ 1-10"
-}
-\`\`\`
+Trả về JSON với cấu trúc:
+- ai_agent_name: Tên chính xác của AI agent
+- ai_agent_type: Loại AI agent (chatbot/image_generator/code_assistant/etc)
+- provider: Tên công ty phát triển
+- overview: Giới thiệu ngắn gọn 2-3 câu về chức năng chính
+- key_features: 3-4 tính năng nổi bật nhất
+- pricing: Thông tin giá cả ngắn gọn
+- advantages: 2-3 ưu điểm chính
+- limitations: 1-2 hạn chế chính
+- excerpt: Tóm tắt 1-2 câu ngắn gọn (max 150 ký tự)
+- seo_title: Tên AI Agent - Đánh giá AI Agent
+- seo_description: Mô tả SEO 2-3 câu (max 250 ký tự)
+
+CHỈ TRẢ VỀ JSON, KHÔNG CÓ TEXT KHÁC.
+
+**LƯU Ý QUAN TRỌNG**:
+- Trả lời NGẮN GỌN, đi thẳng vào vấn đề
+- Mỗi trường chỉ cần thông tin thiết yếu nhất
+- Không cần giải thích dài dòng
+- Ưu tiên tốc độ và độ chính xác
 
 **QUY TẮC TRÍCH XUẤT THÔNG TIN**:
 1. **Từ kết quả tìm kiếm**: Ưu tiên thông tin từ official docs, reviews, comparisons

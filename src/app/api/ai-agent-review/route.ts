@@ -411,28 +411,12 @@ export const POST = async (req: Request) => {
       }
     }
 
-    // Extract metadata from sources, query and message
-    const metadata = extractAgentMetadata(body.query, reviewResult.sources, reviewResult.message);
-
-    // Try to parse JSON from the message to extract structured data
-    let structuredData = null;
-    try {
-      const jsonMatch = reviewResult.message.match(/```json\s*(\{[\s\S]*?\})\s*```/);
-      if (jsonMatch) {
-        structuredData = JSON.parse(jsonMatch[1]);
-      }
-    } catch (error) {
-      console.error('Error parsing JSON from AI agent review response:', error);
-      // If JSON parsing fails, we'll still return the message as is
-    }
-
+    // Return simple response without metadata processing
     return Response.json({
       message: reviewResult.message,
       sources: reviewResult.sources,
       images: images.length > 0 ? images : [],
       videos: videos.length > 0 ? videos : [],
-      metadata: metadata,
-      structured_data: structuredData, // Add structured data if available
     }, { status: 200 });
 
   } catch (err) {

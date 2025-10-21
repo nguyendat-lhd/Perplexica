@@ -9,6 +9,12 @@ const nextConfig = {
     ],
   },
   serverExternalPackages: ['pdf-parse'],
+  experimental: {
+    // Enable longer API route timeouts
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
 };
 
 export default nextConfig;
