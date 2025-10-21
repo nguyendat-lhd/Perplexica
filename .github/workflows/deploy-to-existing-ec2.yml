@@ -44,6 +44,27 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
 
+      - name: Prepare standalone deployment package
+        run: |
+          echo "📦 Preparing standalone deployment package..."
+          
+          # Copy public files to standalone
+          cp -r public .next/standalone/
+          
+          # Copy static files to standalone
+          cp -r .next/static .next/standalone/.next/
+          
+          # Copy config and data
+          cp config.toml .next/standalone/
+          mkdir -p .next/standalone/data
+          cp -r data/* .next/standalone/data/ 2>/dev/null || echo "No data files to copy"
+          
+          # Create uploads directory
+          mkdir -p .next/standalone/uploads
+          
+          echo "✅ Standalone package prepared"
+          ls -la .next/standalone/
+
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
@@ -58,16 +79,12 @@ jobs:
 
       - name: Create deployment package
         run: |
-          echo "📦 Creating deployment package..."
-          tar -czf deploy.tar.gz \
-            --exclude='node_modules' \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='.next/cache' \
-            --exclude='.aws-credentials' \
-            --exclude='deploy.tar.gz' \
-            . || [ $? -eq 1 ]
+          echo "📦 Creating deployment package from standalone build..."
+          cd .next/standalone
+          tar --warning=no-file-changed -czf ../../deploy.tar.gz . || [ $? -eq 1 ]
+          cd ../..
           ls -lh deploy.tar.gz
+          echo "✅ Package created: $(du -h deploy.tar.gz | cut -f1)"
 
       - name: Copy package to EC2
         run: |
@@ -104,28 +121,26 @@ jobs:
               cp ${{ env.APP_DIR }}/package.json ${{ env.APP_DIR }}/backup/ 2>/dev/null || true
             fi
             
-            # Extract new version
-            echo -e "${BLUE}📦 Extracting new version...${NC}"
+            # Clean and extract new version
+            echo -e "${BLUE}📦 Extracting standalone build...${NC}"
+            sudo rm -rf ${{ env.APP_DIR }}/.next
+            sudo rm -rf ${{ env.APP_DIR }}/public
+            sudo rm -rf ${{ env.APP_DIR }}/node_modules
+            
             cd ${{ env.APP_DIR }}
             tar -xzf /tmp/deploy.tar.gz
             rm /tmp/deploy.tar.gz
             
-            # Install Node.js if not exists
-            if ! command -v node &> /dev/null; then
-              echo -e "${BLUE}📥 Installing Node.js...${NC}"
-              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-              sudo apt-get install -y nodejs
-            fi
+            echo -e "${BLUE}📁 Verifying deployment structure...${NC}"
+            ls -la
+            ls -la .next/ || echo "Warning: .next directory not found"
+            ls -la node_modules/ | head -5 || echo "Warning: node_modules not found"
             
             # Install PM2 if not exists
             if ! command -v pm2 &> /dev/null; then
               echo -e "${BLUE}📥 Installing PM2...${NC}"
               sudo npm install -g pm2
             fi
-            
-            # Install dependencies
-            echo -e "${BLUE}📦 Installing dependencies...${NC}"
-            npm ci --production
             
             # Create log directory
             sudo mkdir -p /var/log/perplexica
@@ -135,13 +150,13 @@ jobs:
             echo -e "${BLUE}🛑 Stopping existing process...${NC}"
             pm2 delete perplexica 2>/dev/null || echo "No existing process"
             
-            # Start with PM2
-            echo -e "${BLUE}🚀 Starting application...${NC}"
-            if [ -f "ecosystem.config.js" ]; then
-              pm2 start ecosystem.config.js
-            else
-              pm2 start npm --name perplexica -- start
-            fi
+            # Kill any process on port 3000
+            sudo lsof -ti:3000 | xargs -r sudo kill -9 2>/dev/null || true
+            sleep 2
+            
+            # Start with PM2 from current directory (which is standalone)
+            echo -e "${BLUE}🚀 Starting application from standalone build...${NC}"
+            NODE_ENV=production pm2 start server.js --name perplexica
             
             # Save PM2 process list
             pm2 save
