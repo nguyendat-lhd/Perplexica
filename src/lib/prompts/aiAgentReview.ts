@@ -238,6 +238,30 @@ Dựa trên kết quả tìm kiếm và ngữ cảnh được cung cấp, hãy t
 7. **Khuyến nghị**: Khi nào nên sử dụng AI agent này so với các lựa chọn thay thế
 8. **Triển vọng tương lai**: Tiềm năng phát triển và xu hướng
 
+**YÊU CẦU ĐẶC BIỆT VỀ NỘI DUNG**:
+- Nếu không tìm thấy thông tin cụ thể về AI agent, hãy tạo nội dung mô tả chung dựa trên tên và loại AI agent
+- Tránh nói về việc "không tìm thấy thông tin" hoặc "không thể đánh giá"
+- Tập trung vào việc mô tả tích cực và hữu ích về AI agent
+- Sử dụng kiến thức chung về loại AI agent để tạo nội dung có ý nghĩa
+
+**YÊU CẦU VỀ METADATA**:
+Cuối mỗi phản hồi, hãy thêm các trường metadata sau đây trong định dạng JSON:
+
+\`\`\`json
+{
+  "excerpt": "Tóm tắt ngắn gọn 2-3 câu về AI agent, tập trung vào điểm mạnh và ứng dụng chính",
+  "seo_title": "Tên AI Agent - Đánh giá chi tiết AI Agent",
+  "seo_description": "Mô tả SEO 3-4 câu về AI agent, bao gồm khả năng, ưu điểm và trường hợp sử dụng"
+}
+\`\`\`
+
+**LƯU Ý QUAN TRỌNG VỀ METADATA**:
+- excerpt: Tối đa 200 ký tự, tóm tắt ngắn gọn và hấp dẫn
+- seo_title: Luôn có format "Tên AI Agent - Đánh giá chi tiết AI Agent"
+- seo_description: Tối đa 300 ký tự, mô tả chi tiết cho SEO
+- Tất cả metadata phải bằng tiếng Việt
+- Tránh sử dụng ký tự đặc biệt hoặc HTML tags
+
 Định dạng phản hồi của bạn với các phần rõ ràng và sử dụng định dạng markdown. Bao gồm các trích dẫn liên quan bằng định dạng [1], [2], v.v.
 
 Hãy khách quan, thông tin và cung cấp những hiểu biết có thể hành động cho người dùng đang cân nhắc các AI agent này.
