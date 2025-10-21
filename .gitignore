@@ -1,41 +1,48 @@
-# Node.js
-node_modules/
-npm-debug.log
-yarn-error.log
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Build output
-.next/
-out/
-dist/
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
 
-# IDE/Editor specific
-.vscode/
-.idea/
-*.iml
+# testing
+/coverage
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# next.js
+/.next/
+/out/
 
-# Config files
-config.toml
+# production
+/build
 
-# Log files
-logs/
-*.log
-
-# Testing
-/coverage/
-
-# Miscellaneous
+# misc
 .DS_Store
-Thumbs.db
+*.pem
 
-# Db
-db.sqlite
-/searxng
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-certificates
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# uploads
+/uploads/*
+!/uploads/.gitkeep
+
+# data
+/data/*
+!/data/.gitkeep
+
+# AWS Credentials (DO NOT COMMIT)
+.aws-credentials/
+!.aws-credentials/.gitkeep
