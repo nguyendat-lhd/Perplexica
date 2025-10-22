@@ -253,23 +253,78 @@ export const POST = async (req: Request) => {
       getAvailableEmbeddingModelProviders(),
     ]);
 
-    const chatModelProvider =
-      chatModelProviders[
-        body.chatModel?.provider || Object.keys(chatModelProviders)[0]
-      ];
-    const chatModel =
-      chatModelProvider[
-        body.chatModel?.name || Object.keys(chatModelProvider)[0]
-      ];
+    console.log('Available chat model providers:', Object.keys(chatModelProviders));
+    console.log('Available embedding model providers:', Object.keys(embeddingModelProviders));
+    console.log('Requested chat model:', body.chatModel);
+    console.log('Requested embedding model:', body.embeddingModel);
 
-    const embeddingProvider =
-      embeddingModelProviders[
-        body.embeddingModel?.provider || Object.keys(embeddingModelProviders)[0]
-      ];
-    const embeddingModel =
-      embeddingProvider[
-        body.embeddingModel?.name || Object.keys(embeddingProvider)[0]
-      ];
+    const selectedChatProvider = body.chatModel?.provider || Object.keys(chatModelProviders)[0];
+    console.log('Selected chat provider:', selectedChatProvider);
+
+    const chatModelProvider = chatModelProviders[selectedChatProvider];
+    
+    if (!chatModelProvider) {
+      console.error('Chat model provider not found:', selectedChatProvider);
+      return Response.json(
+        { 
+          error: 'Chat model provider not found',
+          requested: selectedChatProvider,
+          available: Object.keys(chatModelProviders),
+        },
+        { status: 400 },
+      );
+    }
+
+    const selectedChatModel = body.chatModel?.name || Object.keys(chatModelProvider)[0];
+    console.log('Selected chat model:', selectedChatModel);
+
+    const chatModel = chatModelProvider[selectedChatModel];
+    
+    if (!chatModel) {
+      console.error('Chat model not found:', selectedChatModel);
+      return Response.json(
+        { 
+          error: 'Chat model not found',
+          requested: selectedChatModel,
+          available: Object.keys(chatModelProvider),
+        },
+        { status: 400 },
+      );
+    }
+
+    const selectedEmbeddingProvider = body.embeddingModel?.provider || Object.keys(embeddingModelProviders)[0];
+    console.log('Selected embedding provider:', selectedEmbeddingProvider);
+
+    const embeddingProvider = embeddingModelProviders[selectedEmbeddingProvider];
+    
+    if (!embeddingProvider) {
+      console.error('Embedding provider not found:', selectedEmbeddingProvider);
+      return Response.json(
+        { 
+          error: 'Embedding provider not found',
+          requested: selectedEmbeddingProvider,
+          available: Object.keys(embeddingModelProviders),
+        },
+        { status: 400 },
+      );
+    }
+
+    const selectedEmbeddingModel = body.embeddingModel?.name || Object.keys(embeddingProvider)[0];
+    console.log('Selected embedding model:', selectedEmbeddingModel);
+
+    const embeddingModel = embeddingProvider[selectedEmbeddingModel];
+    
+    if (!embeddingModel) {
+      console.error('Embedding model not found:', selectedEmbeddingModel);
+      return Response.json(
+        { 
+          error: 'Embedding model not found',
+          requested: selectedEmbeddingModel,
+          available: Object.keys(embeddingProvider),
+        },
+        { status: 400 },
+      );
+    }
 
     let llm: BaseChatModel | undefined;
     let embedding = embeddingModel.model;
@@ -353,10 +408,19 @@ export const POST = async (req: Request) => {
         'Cache-Control': 'no-cache, no-transform',
       },
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('An error occurred while processing chat request:', err);
+    console.error('Error details:', {
+      message: err.message,
+      stack: err.stack,
+      name: err.name,
+    });
     return Response.json(
-      { message: 'An error occurred while processing chat request' },
+      { 
+        message: 'An error occurred while processing chat request',
+        error: err.message || String(err),
+        details: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+      },
       { status: 500 },
     );
   }
