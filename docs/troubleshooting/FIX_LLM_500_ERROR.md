@@ -291,3 +291,4 @@ For additional help:
 - Run `node test-llm-connection.js`
 - Check application logs: `pm2 logs perplexica`
 
+
