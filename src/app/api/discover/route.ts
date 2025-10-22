@@ -1,4 +1,5 @@
 import { searchSearxng } from '@/lib/searxng';
+import { translateTextsInBatches } from '@/lib/translator';
 
 const websitesForTopic = {
   tech: {
@@ -74,6 +75,49 @@ export const GET = async (req: Request) => {
           },
         )
       ).results;
+    }
+
+    // Dịch toàn bộ nội dung sang tiếng Việt
+    if (data.length > 0) {
+      try {
+        console.log(`🌐 Đang dịch ${data.length} tin tức sang tiếng Việt...`);
+
+        // Tạo mảng chứa tất cả text cần dịch (title và content)
+        const textsToTranslate: string[] = [];
+        data.forEach((item: any) => {
+          if (item.title) textsToTranslate.push(item.title);
+          if (item.content) textsToTranslate.push(item.content);
+        });
+
+        if (textsToTranslate.length > 0) {
+          // Dịch theo batch để tối ưu (5 text mỗi batch)
+          const translations = await translateTextsInBatches(
+            textsToTranslate,
+            5,
+            'vi',
+          );
+
+          // Gán lại giá trị đã dịch vào data
+          let translationIndex = 0;
+          data = data.map((item: any) => {
+            const translatedItem = { ...item };
+            if (item.title) {
+              translatedItem.title = translations[translationIndex];
+              translationIndex++;
+            }
+            if (item.content) {
+              translatedItem.content = translations[translationIndex];
+              translationIndex++;
+            }
+            return translatedItem;
+          });
+
+          console.log(`✅ Dịch xong ${textsToTranslate.length} đoạn văn bản`);
+        }
+      } catch (err) {
+        console.error('Error translating content:', err);
+        // Nếu có lỗi trong quá trình dịch, vẫn trả về data gốc
+      }
     }
 
     return Response.json(

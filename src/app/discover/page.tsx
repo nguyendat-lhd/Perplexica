@@ -16,23 +16,23 @@ export interface Discover {
 
 const topics: { key: string; display: string }[] = [
   {
-    display: 'Tech & Science',
+    display: 'Công nghệ & Khoa học',
     key: 'tech',
   },
   {
-    display: 'Finance',
+    display: 'Tài chính',
     key: 'finance',
   },
   {
-    display: 'Art & Culture',
+    display: 'Nghệ thuật & Văn hóa',
     key: 'art',
   },
   {
-    display: 'Sports',
+    display: 'Thể thao',
     key: 'sports',
   },
   {
-    display: 'Entertainment',
+    display: 'Giải trí',
     key: 'entertainment',
   },
 ];
@@ -63,7 +63,7 @@ const Page = () => {
       setDiscover(data.blogs);
     } catch (err: any) {
       console.error('Error fetching data:', err.message);
-      toast.error('Error fetching data');
+      toast.error('Lỗi khi tải dữ liệu tin tức');
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,7 @@ const Page = () => {
                 className="text-5xl font-normal p-2"
                 style={{ fontFamily: 'PP Editorial, serif' }}
               >
-                Discover
+                Khám phá
               </h1>
             </div>
             <div className="flex flex-row items-center space-x-2 overflow-x-auto">
