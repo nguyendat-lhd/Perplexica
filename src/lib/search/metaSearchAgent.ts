@@ -142,39 +142,40 @@ class MetaSearchAgent implements MetaSearchAgentType {
           await Promise.all(
             docGroups.map(async (doc) => {
               const res = await llm.invoke(`
-            You are a web search summarizer, tasked with summarizing a piece of text retrieved from a web search. Your job is to summarize the 
-            text into a detailed, 2-4 paragraph explanation that captures the main ideas and provides a comprehensive answer to the query.
-            If the query is \"summarize\", you should provide a detailed summary of the text. If the query is a specific question, you should answer it in the summary.
+            Bạn là một AI tóm tắt nội dung web, có nhiệm vụ tóm tắt một đoạn văn bản được lấy từ tìm kiếm web. Nhiệm vụ của bạn là tóm tắt 
+            văn bản thành một giải thích chi tiết 2-4 đoạn văn bằng tiếng Việt, nắm bắt được những ý chính và cung cấp câu trả lời toàn diện cho truy vấn.
+            Nếu truy vấn là \"summarize\" hoặc bắt đầu bằng \"Summary:\", bạn nên cung cấp một bản tóm tắt chi tiết của văn bản. Nếu truy vấn là một câu hỏi cụ thể, bạn nên trả lời nó trong bản tóm tắt.
             
-            - **Journalistic tone**: The summary should sound professional and journalistic, not too casual or vague.
-            - **Thorough and detailed**: Ensure that every key point from the text is captured and that the summary directly answers the query.
-            - **Not too lengthy, but detailed**: The summary should be informative but not excessively long. Focus on providing detailed information in a concise format.
+            - **Giọng điệu báo chí**: Bản tóm tắt nên có âm điệu chuyên nghiệp và mang tính báo chí, không quá thân mật hoặc mơ hồ.
+            - **Thorough và chi tiết**: Đảm bảo rằng mọi điểm chính từ văn bản đều được nắm bắt và bản tóm tắt trả lời trực tiếp truy vấn.
+            - **Không quá dài, nhưng chi tiết**: Bản tóm tắt nên cung cấp thông tin nhưng không quá dài. Tập trung vào việc cung cấp thông tin chi tiết trong một định dạng súc tích.
+            - **Ngôn ngữ**: Luôn trả lời bằng tiếng Việt, sử dụng từ ngữ tự nhiên và dễ hiểu.
 
-            The text will be shared inside the \`text\` XML tag, and the query inside the \`query\` XML tag.
+            Văn bản sẽ được chia sẻ trong thẻ XML \`text\`, và truy vấn trong thẻ XML \`query\`.
 
             <example>
             1. \`<text>
-            Docker is a set of platform-as-a-service products that use OS-level virtualization to deliver software in packages called containers. 
-            It was first released in 2013 and is developed by Docker, Inc. Docker is designed to make it easier to create, deploy, and run applications 
-            by using containers.
+            Docker là một bộ sản phẩm platform-as-a-service sử dụng ảo hóa cấp hệ điều hành để cung cấp phần mềm trong các gói được gọi là container. 
+            Nó được phát hành lần đầu vào năm 2013 và được phát triển bởi Docker, Inc. Docker được thiết kế để làm cho việc tạo, triển khai và chạy ứng dụng 
+            dễ dàng hơn bằng cách sử dụng container.
             </text>
 
             <query>
-            What is Docker and how does it work?
+            Docker là gì và nó hoạt động như thế nào?
             </query>
 
             Response:
-            Docker is a revolutionary platform-as-a-service product developed by Docker, Inc., that uses container technology to make application 
-            deployment more efficient. It allows developers to package their software with all necessary dependencies, making it easier to run in 
-            any environment. Released in 2013, Docker has transformed the way applications are built, deployed, and managed.
+            Docker là một sản phẩm platform-as-a-service mang tính cách mạng được phát triển bởi Docker, Inc., sử dụng công nghệ container để làm cho việc 
+            triển khai ứng dụng hiệu quả hơn. Nó cho phép các nhà phát triển đóng gói phần mềm của họ cùng với tất cả các phụ thuộc cần thiết, giúp dễ dàng 
+            chạy trong bất kỳ môi trường nào. Được phát hành vào năm 2013, Docker đã thay đổi cách thức xây dựng, triển khai và quản lý ứng dụng.
             \`
             2. \`<text>
-            The theory of relativity, or simply relativity, encompasses two interrelated theories of Albert Einstein: special relativity and general
-            relativity. However, the word "relativity" is sometimes used in reference to Galilean invariance. The term "theory of relativity" was based
-            on the expression "relative theory" used by Max Planck in 1906. The theory of relativity usually encompasses two interrelated theories by
-            Albert Einstein: special relativity and general relativity. Special relativity applies to all physical phenomena in the absence of gravity.
-            General relativity explains the law of gravitation and its relation to other forces of nature. It applies to the cosmological and astrophysical
-            realm, including astronomy.
+            Thuyết tương đối, hay đơn giản là tương đối, bao gồm hai lý thuyết có liên quan với nhau của Albert Einstein: thuyết tương đối đặc biệt và thuyết 
+            tương đối tổng quát. Tuy nhiên, từ "tương đối" đôi khi được sử dụng để chỉ tính bất biến Galilean. Thuật ngữ "thuyết tương đối" dựa trên biểu thức 
+            "lý thuyết tương đối" được Max Planck sử dụng vào năm 1906. Thuyết tương đối thường bao gồm hai lý thuyết có liên quan với nhau của Albert Einstein: 
+            thuyết tương đối đặc biệt và thuyết tương đối tổng quát. Thuyết tương đối đặc biệt áp dụng cho tất cả các hiện tượng vật lý trong trường hợp không có 
+            trọng lực. Thuyết tương đối tổng quát giải thích định luật hấp dẫn và mối quan hệ của nó với các lực khác của tự nhiên. Nó áp dụng cho lĩnh vực vũ trụ 
+            học và vật lý thiên văn, bao gồm thiên văn học.
             </text>
 
             <query>
@@ -182,14 +183,14 @@ class MetaSearchAgent implements MetaSearchAgentType {
             </query>
 
             Response:
-            The theory of relativity, developed by Albert Einstein, encompasses two main theories: special relativity and general relativity. Special
-            relativity applies to all physical phenomena in the absence of gravity, while general relativity explains the law of gravitation and its
-            relation to other forces of nature. The theory of relativity is based on the concept of "relative theory," as introduced by Max Planck in
-            1906. It is a fundamental theory in physics that has revolutionized our understanding of the universe.
+            Thuyết tương đối, được phát triển bởi Albert Einstein, bao gồm hai lý thuyết chính: thuyết tương đối đặc biệt và thuyết tương đối tổng quát. Thuyết 
+            tương đối đặc biệt áp dụng cho tất cả các hiện tượng vật lý trong trường hợp không có trọng lực, trong khi thuyết tương đối tổng quát giải thích định 
+            luật hấp dẫn và mối quan hệ của nó với các lực khác của tự nhiên. Thuyết tương đối dựa trên khái niệm "lý thuyết tương đối", như được Max Planck 
+            giới thiệu vào năm 1906. Đây là một lý thuyết cơ bản trong vật lý đã cách mạng hóa hiểu biết của chúng ta về vũ trụ.
             \`
             </example>
 
-            Everything below is the actual data you will be working with. Good luck!
+            Tất cả nội dung bên dưới là dữ liệu thực tế mà bạn sẽ làm việc. Chúc bạn thành công!
 
             <query>
             ${question}
