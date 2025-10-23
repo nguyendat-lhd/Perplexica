@@ -1,34 +1,42 @@
 import { searchSearxng } from '@/lib/searxng';
 import { translateTextsInBatches } from '@/lib/translator';
 
+// Cache 30 phút để tránh dịch lại quá nhiều
+const CACHE_DURATION = 30 * 60 * 1000;
+
+// Global cache để tránh bị reset khi hot reload
+// @ts-ignore
+if (!global.discoverCache) {
+  // @ts-ignore
+  global.discoverCache = new Map();
+}
+
+const cache = global.discoverCache as Map<string, { data: any; timestamp: number }>;
+
 const websitesForTopic = {
   tech: {
-    query: ['technology news', 'latest tech', 'AI', 'science and innovation'],
-    links: ['techcrunch.com', 'wired.com', 'theverge.com'],
+    query: ['technology news', 'latest tech', 'AI', 'science and innovation', 'startup', 'innovation'],
+    links: ['techcrunch.com', 'wired.com', 'theverge.com', 'arstechnica.com', 'engadget.com'],
   },
   finance: {
-    query: ['finance news', 'economy', 'stock market', 'investing'],
-    links: ['bloomberg.com', 'cnbc.com', 'marketwatch.com'],
+    query: ['finance news', 'economy', 'stock market', 'investing', 'business', 'markets'],
+    links: ['bloomberg.com', 'cnbc.com', 'marketwatch.com', 'reuters.com', 'ft.com'],
   },
   art: {
-    query: ['art news', 'culture', 'modern art', 'cultural events'],
-    links: ['artnews.com', 'hyperallergic.com', 'theartnewspaper.com'],
+    query: ['art news', 'culture', 'modern art', 'cultural events', 'exhibition', 'gallery'],
+    links: ['artnews.com', 'hyperallergic.com', 'theartnewspaper.com', 'artforum.com', 'artnet.com'],
   },
   sports: {
-    query: ['sports news', 'latest sports', 'cricket football tennis'],
-    links: ['espn.com', 'bbc.com/sport', 'skysports.com'],
+    query: ['sports news', 'latest sports', 'cricket football tennis', 'basketball', 'soccer'],
+    links: ['espn.com', 'bbc.com/sport', 'skysports.com', 'theguardian.com/sport', 'sports.yahoo.com'],
   },
   entertainment: {
-    query: ['entertainment news', 'movies', 'TV shows', 'celebrities'],
-    links: ['hollywoodreporter.com', 'variety.com', 'deadline.com'],
+    query: ['entertainment news', 'movies', 'TV shows', 'celebrities', 'cinema', 'television'],
+    links: ['hollywoodreporter.com', 'variety.com', 'deadline.com', 'entertainmentweekly.com', 'ew.com'],
   },
 };
 
 type Topic = keyof typeof websitesForTopic;
-
-// Cache 5 phút (300000ms)
-const CACHE_DURATION = 5 * 60 * 1000;
-const cache: Map<string, { data: any; timestamp: number }> = new Map();
 
 export const GET = async (req: Request) => {
   try {
@@ -42,9 +50,14 @@ export const GET = async (req: Request) => {
     const cacheKey = `${mode}-${topic}`;
 
     // Kiểm tra cache
+    console.log(`🔍 Checking cache for key: ${cacheKey}`);
+    console.log(`📦 Current cache size: ${cache.size}`);
+    console.log(`🗂️ Cache keys:`, Array.from(cache.keys()));
+    
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log(`✅ Cache hit for ${cacheKey}`);
+      const cacheAge = Math.floor((Date.now() - cached.timestamp) / 1000);
+      console.log(`✅ Cache hit for ${cacheKey} (age: ${cacheAge}s, returning ${cached.data.length} articles)`);
       return Response.json(
         {
           blogs: cached.data,
@@ -55,7 +68,11 @@ export const GET = async (req: Request) => {
       );
     }
 
-    console.log(`🔄 Cache miss, fetching new data for ${cacheKey}`);
+    if (cached) {
+      const cacheAge = Math.floor((Date.now() - cached.timestamp) / 1000);
+      console.log(`⏰ Cache expired for ${cacheKey} (age: ${cacheAge}s)`);
+    }
+    console.log(`🔄 Cache miss for ${cacheKey}, fetching new data...`);
 
     const selectedTopic = websitesForTopic[topic];
 
@@ -64,21 +81,21 @@ export const GET = async (req: Request) => {
     if (mode === 'normal') {
       const seenUrls = new Set();
 
-      // Tối ưu: chỉ search với 1 query ngẫu nhiên cho mỗi link thay vì tất cả queries
-      // Giảm từ 12 searches xuống còn 3 searches (1 link × 1 query)
-      const randomQuery = selectedTopic.query[Math.floor(Math.random() * selectedTopic.query.length)];
-      
+      // Search với tất cả queries để có đủ 100 tin
+      // 5 links × 6 queries = 30 searches → có thể được 150+ tin
       data = (
         await Promise.all(
-          selectedTopic.links.map(async (link) => {
-            return (
-              await searchSearxng(`site:${link} ${randomQuery}`, {
-                engines: ['bing news'],
-                pageno: 1,
-                language: 'en',
-              })
-            ).results;
-          }),
+          selectedTopic.links.flatMap((link) =>
+            selectedTopic.query.map(async (query) => {
+              return (
+                await searchSearxng(`site:${link} ${query}`, {
+                  engines: ['bing news'],
+                  pageno: 1,
+                  language: 'en',
+                })
+              ).results;
+            }),
+          ),
         )
       )
         .flat()
@@ -119,7 +136,7 @@ export const GET = async (req: Request) => {
       shouldTranslateContent = true; // Widget hiển thị content nên cần dịch
     } else {
       // Normal mode: nhiều tin hơn, dịch cả title và content
-      limitedData = dataWithThumbnail.slice(0, 24); // Giới hạn 24 kết quả
+      limitedData = dataWithThumbnail.slice(0, 100); // Tăng lên 100 kết quả để đủ cho infinite scroll
       shouldTranslateContent = true; // Trang khám phá cũng hiển thị content
     }
 
@@ -139,8 +156,8 @@ export const GET = async (req: Request) => {
 
         if (textsToTranslate.length > 0) {
           // Dịch theo batch với delay phù hợp
-          // Normal mode: batch lớn hơn vì có nhiều tin, Preview mode: batch nhỏ hơn
-          const batchSize = mode === 'preview' ? 2 : 3;
+          // Normal mode: batch lớn hơn để dịch nhanh hơn với nhiều tin, Preview mode: batch nhỏ hơn
+          const batchSize = mode === 'preview' ? 2 : 5;
           const translations = await translateTextsInBatches(
             textsToTranslate,
             batchSize,
@@ -175,6 +192,7 @@ export const GET = async (req: Request) => {
 
     // Lưu vào cache kết quả đã dịch
     cache.set(cacheKey, { data, timestamp: Date.now() });
+    console.log(`💾 Cached ${data.length} articles for ${cacheKey}`);
 
     return Response.json(
       {

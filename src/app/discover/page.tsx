@@ -42,6 +42,7 @@ const Page = () => {
   const [loading, setLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [activeTopic, setActiveTopic] = useState<string>(topics[0].key);
+  const [visibleCount, setVisibleCount] = useState(12); // Hiển thị 12 tin đầu tiên
 
   const fetchArticles = async (topic: string) => {
     setLoading(true);
@@ -71,6 +72,7 @@ const Page = () => {
 
       // Không cần filter lại vì API đã filter các kết quả có thumbnail
       setDiscover(data.blogs);
+      setVisibleCount(12); // Reset về 12 tin khi load topic mới
       
       // Complete progress
       clearInterval(progressInterval);
@@ -90,6 +92,30 @@ const Page = () => {
   useEffect(() => {
     fetchArticles(activeTopic);
   }, [activeTopic]);
+
+  // Infinite scroll detection
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loading || !discover) return;
+      
+      const scrollBottom = window.innerHeight + window.scrollY;
+      const documentHeight = document.documentElement.scrollHeight;
+      
+      // Load thêm khi còn 300px trước khi đến cuối trang
+      if (scrollBottom >= documentHeight - 300 && visibleCount < discover.length) {
+        setVisibleCount((prev) => Math.min(prev + 12, discover.length));
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loading, discover, visibleCount]);
+
+  const handleLoadMore = () => {
+    if (discover && visibleCount < discover.length) {
+      setVisibleCount((prev) => Math.min(prev + 12, discover.length));
+    }
+  };
 
   return (
     <>
@@ -162,7 +188,7 @@ const Page = () => {
           <div className="flex flex-col gap-4 pb-28 pt-5 lg:pb-8 w-full">
             <div className="block lg:hidden">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {discover?.map((item, i) => (
+                {discover?.slice(0, visibleCount).map((item, i) => (
                   <SmallNewsCard key={`mobile-${i}`} item={item} />
                 ))}
               </div>
@@ -172,10 +198,11 @@ const Page = () => {
               {discover &&
                 discover.length > 0 &&
                 (() => {
+                  const visibleArticles = discover.slice(0, visibleCount);
                   const sections = [];
                   let index = 0;
 
-                  while (index < discover.length) {
+                  while (index < visibleArticles.length) {
                     if (sections.length > 0) {
                       sections.push(
                         <hr
@@ -185,18 +212,18 @@ const Page = () => {
                       );
                     }
 
-                    if (index < discover.length) {
+                    if (index < visibleArticles.length) {
                       sections.push(
                         <MajorNewsCard
                           key={`major-${index}`}
-                          item={discover[index]}
+                          item={visibleArticles[index]}
                           isLeft={false}
                         />,
                       );
                       index++;
                     }
 
-                    if (index < discover.length) {
+                    if (index < visibleArticles.length) {
                       sections.push(
                         <hr
                           key={`sep-${index}-after`}
@@ -205,8 +232,8 @@ const Page = () => {
                       );
                     }
 
-                    if (index < discover.length) {
-                      const smallCards = discover.slice(index, index + 3);
+                    if (index < visibleArticles.length) {
+                      const smallCards = visibleArticles.slice(index, index + 3);
                       sections.push(
                         <div
                           key={`small-group-${index}`}
@@ -232,8 +259,8 @@ const Page = () => {
                       );
                     }
 
-                    if (index < discover.length - 1) {
-                      const twoMajorCards = discover.slice(index, index + 2);
+                    if (index < visibleArticles.length - 1) {
+                      const twoMajorCards = visibleArticles.slice(index, index + 2);
                       twoMajorCards.forEach((item, i) => {
                         sections.push(
                           <MajorNewsCard
@@ -252,18 +279,18 @@ const Page = () => {
                         }
                       });
                       index += 2;
-                    } else if (index < discover.length) {
+                    } else if (index < visibleArticles.length) {
                       sections.push(
                         <MajorNewsCard
                           key={`final-major-${index}`}
-                          item={discover[index]}
+                          item={visibleArticles[index]}
                           isLeft={true}
                         />,
                       );
                       index++;
                     }
 
-                    if (index < discover.length) {
+                    if (index < visibleArticles.length) {
                       sections.push(
                         <hr
                           key={`sep-${index}-after-major`}
@@ -272,8 +299,8 @@ const Page = () => {
                       );
                     }
 
-                    if (index < discover.length) {
-                      const smallCards = discover.slice(index, index + 3);
+                    if (index < visibleArticles.length) {
+                      const smallCards = visibleArticles.slice(index, index + 3);
                       sections.push(
                         <div
                           key={`small-group-2-${index}`}
@@ -294,6 +321,27 @@ const Page = () => {
                   return sections;
                 })()}
             </div>
+
+            {/* Load More Button */}
+            {discover && visibleCount < discover.length && (
+              <div className="flex justify-center mt-8">
+                <button
+                  onClick={handleLoadMore}
+                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-full font-semibold hover:from-cyan-600 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Tải thêm tin tức ({discover.length - visibleCount} tin còn lại)
+                </button>
+              </div>
+            )}
+
+            {/* End Message */}
+            {discover && visibleCount >= discover.length && discover.length > 0 && (
+              <div className="flex justify-center mt-8">
+                <p className="text-black/40 dark:text-white/40 text-sm">
+                  ✨ Đã hiển thị tất cả {discover.length} tin tức
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
