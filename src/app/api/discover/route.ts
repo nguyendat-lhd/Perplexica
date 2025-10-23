@@ -5,13 +5,15 @@ import { translateTextsInBatches } from '@/lib/translator';
 const CACHE_DURATION = 30 * 60 * 1000;
 
 // Global cache để tránh bị reset khi hot reload
-// @ts-ignore
+declare global {
+  var discoverCache: Map<string, { data: any; timestamp: number }> | undefined;
+}
+
 if (!global.discoverCache) {
-  // @ts-ignore
   global.discoverCache = new Map();
 }
 
-const cache = global.discoverCache as Map<string, { data: any; timestamp: number }>;
+const cache = global.discoverCache;
 
 const websitesForTopic = {
   tech: {

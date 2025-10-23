@@ -6,8 +6,10 @@ import { NextRequest } from 'next/server';
  * Nhận array text và trả về array translated
  */
 export const POST = async (req: NextRequest) => {
+  let body: any = {};
+  
   try {
-    const body = await req.json();
+    body = await req.json();
     const { texts, targetLang = 'vi' } = body;
 
     if (!texts || !Array.isArray(texts)) {
