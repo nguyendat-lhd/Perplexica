@@ -64,19 +64,21 @@ export const GET = async (req: Request) => {
     if (mode === 'normal') {
       const seenUrls = new Set();
 
+      // Tối ưu: chỉ search với 1 query ngẫu nhiên cho mỗi link thay vì tất cả queries
+      // Giảm từ 12 searches xuống còn 3 searches (1 link × 1 query)
+      const randomQuery = selectedTopic.query[Math.floor(Math.random() * selectedTopic.query.length)];
+      
       data = (
         await Promise.all(
-          selectedTopic.links.flatMap((link) =>
-            selectedTopic.query.map(async (query) => {
-              return (
-                await searchSearxng(`site:${link} ${query}`, {
-                  engines: ['bing news'],
-                  pageno: 1,
-                  language: 'en',
-                })
-              ).results;
-            }),
-          ),
+          selectedTopic.links.map(async (link) => {
+            return (
+              await searchSearxng(`site:${link} ${randomQuery}`, {
+                engines: ['bing news'],
+                pageno: 1,
+                language: 'en',
+              })
+            ).results;
+          }),
         )
       )
         .flat()
@@ -100,35 +102,60 @@ export const GET = async (req: Request) => {
       ).results;
     }
 
-    // Dịch sang tiếng Việt với delay lớn hơn để tránh rate limit
-    if (data.length > 0) {
-      try {
-        console.log(`🌐 Đang dịch ${data.length} tin tức sang tiếng Việt...`);
+    // Lọc các kết quả có thumbnail TRƯỚC KHI dịch để tránh dịch những kết quả không dùng đến
+    const dataWithThumbnail = data.filter((item: any) => {
+      return item.thumbnail || item.thumbnail_src || item.img_src;
+    });
 
-        // Tạo mảng chứa tất cả text cần dịch (title và content)
+    console.log(`📊 Tổng kết quả: ${data.length}, có thumbnail: ${dataWithThumbnail.length}`);
+
+    // Tối ưu khác nhau cho mode normal và preview
+    let limitedData;
+    let shouldTranslateContent = false;
+    
+    if (mode === 'preview') {
+      // Preview mode: chỉ cần ít tin (widget chỉ cần 1), nhưng cần dịch cả content
+      limitedData = dataWithThumbnail.slice(0, 5); // Chỉ lấy 5 tin
+      shouldTranslateContent = true; // Widget hiển thị content nên cần dịch
+    } else {
+      // Normal mode: nhiều tin hơn, dịch cả title và content
+      limitedData = dataWithThumbnail.slice(0, 24); // Giới hạn 24 kết quả
+      shouldTranslateContent = true; // Trang khám phá cũng hiển thị content
+    }
+
+    // Dịch sang tiếng Việt với delay lớn hơn để tránh rate limit
+    if (limitedData.length > 0) {
+      try {
+        console.log(`🌐 Đang dịch ${limitedData.length} tin tức (mode: ${mode})...`);
+
+        // Dịch theo mode
         const textsToTranslate: string[] = [];
-        data.forEach((item: any) => {
+        limitedData.forEach((item: any) => {
           if (item.title) textsToTranslate.push(item.title);
-          if (item.content) textsToTranslate.push(item.content);
+          if (shouldTranslateContent && item.content) {
+            textsToTranslate.push(item.content);
+          }
         });
 
         if (textsToTranslate.length > 0) {
-          // Dịch theo batch nhỏ (2 text mỗi batch) với delay lớn hơn
+          // Dịch theo batch với delay phù hợp
+          // Normal mode: batch lớn hơn vì có nhiều tin, Preview mode: batch nhỏ hơn
+          const batchSize = mode === 'preview' ? 2 : 3;
           const translations = await translateTextsInBatches(
             textsToTranslate,
-            2, // Giảm batch size xuống 2
+            batchSize,
             'vi',
           );
 
           // Gán lại giá trị đã dịch vào data
           let translationIndex = 0;
-          data = data.map((item: any) => {
+          data = limitedData.map((item: any) => {
             const translatedItem = { ...item };
             if (item.title) {
               translatedItem.title = translations[translationIndex];
               translationIndex++;
             }
-            if (item.content) {
+            if (shouldTranslateContent && item.content) {
               translatedItem.content = translations[translationIndex];
               translationIndex++;
             }
@@ -140,7 +167,10 @@ export const GET = async (req: Request) => {
       } catch (err) {
         console.error('Error translating content:', err);
         // Nếu có lỗi trong quá trình dịch, vẫn trả về data gốc
+        data = limitedData;
       }
+    } else {
+      data = [];
     }
 
     // Lưu vào cache kết quả đã dịch

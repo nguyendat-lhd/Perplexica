@@ -152,21 +152,22 @@ export async function translateTextsInBatches(
   for (let i = 0; i < texts.length; i += batchSize) {
     const batch = texts.slice(i, i + batchSize);
 
-    // Dịch tuần tự với delay ngắn hơn vì Google Translate ổn định hơn
+    // Dịch tuần tự với delay tối ưu
     const batchResults: string[] = [];
     for (const text of batch) {
       const translated = await translateSingle(text, targetLang);
       batchResults.push(translated);
-      // Delay ngắn hơn vì Google Translate tốt hơn
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      // Delay động dựa trên độ dài text: ngắn hơn với title, dài hơn với content
+      const delay = text.length > 100 ? 150 : 80;
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
     results.push(...batchResults);
 
-    // Delay giữa các batch
+    // Delay giữa các batch (rút ngắn để tối ưu)
     if (i + batchSize < texts.length) {
       console.log(`⏳ Đang đợi trước khi dịch batch tiếp theo...`);
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
   }
 

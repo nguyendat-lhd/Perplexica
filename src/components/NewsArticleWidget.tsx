@@ -16,7 +16,8 @@ const NewsArticleWidget = () => {
     fetch('/api/discover?mode=preview')
       .then((res) => res.json())
       .then((data) => {
-        const articles = (data.blogs || []).filter((a: Article) => a.thumbnail);
+        // API đã filter thumbnail rồi, không cần filter lại
+        const articles = data.blogs || [];
         setArticle(articles[Math.floor(Math.random() * articles.length)]);
         setLoading(false);
       })
