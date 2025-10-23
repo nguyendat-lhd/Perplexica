@@ -64,7 +64,7 @@ const MessageInput = () => {
         }
       }}
       className={cn(
-        'bg-light-secondary dark:bg-dark-secondary p-4 flex items-center overflow-hidden border border-light-200 dark:border-dark-200 shadow-sm shadow-light-200/10 dark:shadow-black/20 transition-all duration-200 focus-within:border-light-300 dark:focus-within:border-dark-300',
+        'bg-white p-4 flex items-center overflow-hidden border border-gray-200 shadow-sm transition-all duration-200 focus-within:border-yellow-400 focus-within:shadow-md',
         mode === 'multi' ? 'flex-col rounded-2xl' : 'flex-row rounded-full',
       )}
     >
@@ -76,7 +76,7 @@ const MessageInput = () => {
         onHeightChange={(height, props) => {
           setTextareaRows(Math.ceil(height / props.rowHeight));
         }}
-        className="transition bg-transparent dark:placeholder:text-white/50 placeholder:text-sm text-sm dark:text-white resize-none focus:outline-none w-full px-2 max-h-24 lg:max-h-36 xl:max-h-48 flex-grow flex-shrink"
+        className="transition bg-transparent placeholder:text-black/50 placeholder:text-sm text-sm text-black resize-none focus:outline-none w-full px-2 max-h-24 lg:max-h-36 xl:max-h-48 flex-grow flex-shrink"
         placeholder="Đặt câu hỏi tiếp theo"
       />
       {mode === 'single' && (
@@ -87,9 +87,9 @@ const MessageInput = () => {
           />
           <button
             disabled={message.trim().length === 0 || loading}
-            className="bg-[#24A0ED] text-white disabled:text-black/50 dark:disabled:text-white/50 hover:bg-opacity-85 transition duration-100 disabled:bg-[#e0e0dc79] dark:disabled:bg-[#ececec21] rounded-full p-2"
+            className="bg-black text-white disabled:text-black/30 disabled:bg-gray-200 hover:bg-gray-900 transition duration-100 rounded-full p-2"
           >
-            <ArrowUp className="bg-background" size={17} />
+            <ArrowUp size={17} />
           </button>
         </div>
       )}
@@ -103,9 +103,9 @@ const MessageInput = () => {
             />
             <button
               disabled={message.trim().length === 0 || loading}
-              className="bg-[#24A0ED] text-white text-black/50 dark:disabled:text-white/50 hover:bg-opacity-85 transition duration-100 disabled:bg-[#e0e0dc79] dark:disabled:bg-[#ececec21] rounded-full p-2"
+              className="bg-black text-yellow-400 disabled:text-black/30 disabled:bg-gray-200 hover:bg-gray-900 transition duration-100 rounded-full p-2"
             >
-              <ArrowUp className="bg-background" size={17} />
+              <ArrowUp size={17} />
             </button>
           </div>
         </div>

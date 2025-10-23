@@ -11,6 +11,98 @@
 }
 
 @layer base {
+  :root {
+    /* Typography */
+    --font-sans: "Roboto", Arial, sans-serif;
+    
+    /* Light Theme Colors - TrangVang Yellow Pages Theme */
+    --background: oklch(0.98 0.05 95);
+    --foreground: oklch(0.15 0 0);
+    --primary: oklch(0.15 0 0);
+    --primary-foreground: oklch(0.96 0.12 95);
+    --secondary: oklch(0.965 0.06 95);
+    --secondary-foreground: oklch(0.18 0 0);
+    --muted: oklch(0.96 0.04 95);
+    --muted-foreground: oklch(0.45 0.05 80);
+    --accent: oklch(0.86 0.18 85);
+    --accent-foreground: oklch(0.18 0 0);
+    --destructive: oklch(0.57 0.25 27.3);
+    --destructive-foreground: oklch(0.98 0 0);
+    --border: oklch(0.92 0.05 95);
+    --input: oklch(0.92 0.05 95);
+    --ring: oklch(0.78 0.18 85);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.15 0 0);
+  }
+
+  .dark {
+    /* Dark Theme Colors - Similar structure for dark mode */
+    --background: oklch(0.15 0 0);
+    --foreground: oklch(0.98 0.05 95);
+    --primary: oklch(0.96 0.12 95);
+    --primary-foreground: oklch(0.15 0 0);
+    --secondary: oklch(0.25 0.05 80);
+    --secondary-foreground: oklch(0.96 0.12 95);
+    --muted: oklch(0.2 0.03 80);
+    --muted-foreground: oklch(0.7 0.1 85);
+    --accent: oklch(0.86 0.18 85);
+    --accent-foreground: oklch(0.15 0 0);
+    --destructive: oklch(0.57 0.25 27.3);
+    --destructive-foreground: oklch(0.98 0 0);
+    --border: oklch(0.3 0.05 80);
+    --input: oklch(0.3 0.05 80);
+    --ring: oklch(0.78 0.18 85);
+    --card: oklch(0.2 0.03 80);
+    --card-foreground: oklch(0.98 0.05 95);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  @media (min-width: 768px) {
+    h1 {
+      font-size: 2rem;
+    }
+    h2 {
+      font-size: 1.5rem;
+    }
+    h3 {
+      font-size: 1.25rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    h1 {
+      font-size: 2.5rem;
+    }
+    h2 {
+      font-size: 1.875rem;
+    }
+    h3 {
+      font-size: 1.5rem;
+    }
+  }
+
   .overflow-hidden-scrollable {
     -ms-overflow-style: none;
   }
