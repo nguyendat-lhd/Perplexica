@@ -4,11 +4,12 @@ frontend:
     preBuild:
       commands:
         - npm ci
+        - npm run db:migrate
     build:
       commands:
         - npm run build
   artifacts:
-    baseDirectory: out
+    baseDirectory: .next
     files:
       - '**/*'
   cache:
