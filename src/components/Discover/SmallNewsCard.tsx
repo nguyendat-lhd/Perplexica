@@ -1,5 +1,6 @@
 import { Discover } from '@/app/discover/page';
 import Link from 'next/link';
+import { merriweather } from '@/lib/fonts';
 
 const SmallNewsCard = ({ item }: { item: Discover }) => (
   <Link
@@ -19,10 +20,10 @@ const SmallNewsCard = ({ item }: { item: Discover }) => (
       />
     </div>
     <div className="p-4">
-      <h3 className="font-semibold text-sm mb-2 leading-tight line-clamp-2 group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition duration-200">
+      <h3 className={`font-semibold text-sm mb-2 leading-tight line-clamp-2 group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition duration-200 ${merriweather.className}`}>
         {item.title}
       </h3>
-      <p className="text-black/60 dark:text-white/60 text-xs leading-relaxed line-clamp-2">
+      <p className="text-black/60 dark:text-white/60 text-xs leading-relaxed line-clamp-2" style={{ fontFamily: 'Roboto, Arial, sans-serif' }}>
         {item.content}
       </p>
     </div>

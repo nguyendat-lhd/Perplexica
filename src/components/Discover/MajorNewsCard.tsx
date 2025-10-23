@@ -1,5 +1,6 @@
 import { Discover } from '@/app/discover/page';
 import Link from 'next/link';
+import { merriweather } from '@/lib/fonts';
 
 const MajorNewsCard = ({
   item,
@@ -28,12 +29,11 @@ const MajorNewsCard = ({
         </div>
         <div className="flex flex-col justify-center flex-1 py-4">
           <h2
-            className="text-3xl font-light mb-3 leading-tight line-clamp-3 group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition duration-200"
-            style={{ fontFamily: 'PP Editorial, serif' }}
+            className={`text-3xl font-light mb-3 leading-tight line-clamp-3 group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition duration-200 ${merriweather.className}`}
           >
             {item.title}
           </h2>
-          <p className="text-black/60 dark:text-white/60 text-base leading-relaxed line-clamp-4">
+          <p className="text-black/60 dark:text-white/60 text-base leading-relaxed line-clamp-4" style={{ fontFamily: 'Roboto, Arial, sans-serif' }}>
             {item.content}
           </p>
         </div>
@@ -42,12 +42,11 @@ const MajorNewsCard = ({
       <>
         <div className="flex flex-col justify-center flex-1 py-4">
           <h2
-            className="text-3xl font-light mb-3 leading-tight line-clamp-3 group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition duration-200"
-            style={{ fontFamily: 'PP Editorial, serif' }}
+            className={`text-3xl font-light mb-3 leading-tight line-clamp-3 group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition duration-200 ${merriweather.className}`}
           >
             {item.title}
           </h2>
-          <p className="text-black/60 dark:text-white/60 text-base leading-relaxed line-clamp-4">
+          <p className="text-black/60 dark:text-white/60 text-base leading-relaxed line-clamp-4" style={{ fontFamily: 'Roboto, Arial, sans-serif' }}>
             {item.content}
           </p>
         </div>
