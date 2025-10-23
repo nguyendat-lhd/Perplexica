@@ -87,7 +87,7 @@ const MessageBox = ({
                 <div className="flex flex-row items-center space-x-2">
                   <BookCopy className="text-black dark:text-white" size={20} />
                   <h3 className="text-black dark:text-white font-medium text-xl">
-                    Sources
+                    Nguồn
                   </h3>
                 </div>
                 <MessageSources sources={section.sourceMessage.sources} />
@@ -105,7 +105,7 @@ const MessageBox = ({
                   size={20}
                 />
                 <h3 className="text-black dark:text-white font-medium text-xl">
-                  Answer
+                  Câu trả lời
                 </h3>
               </div>
             )}
@@ -179,7 +179,7 @@ const MessageBox = ({
                           size={20}
                         />
                         <h3 className="text-black dark:text-white font-medium text-xl">
-                          Related
+                          Liên quan
                         </h3>
                       </div>
                       <div className="space-y-0">

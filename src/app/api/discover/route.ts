@@ -26,6 +26,10 @@ const websitesForTopic = {
 
 type Topic = keyof typeof websitesForTopic;
 
+// Cache 5 phút (300000ms)
+const CACHE_DURATION = 5 * 60 * 1000;
+const cache: Map<string, { data: any; timestamp: number }> = new Map();
+
 export const GET = async (req: Request) => {
   try {
     const params = new URL(req.url).searchParams;
@@ -33,6 +37,25 @@ export const GET = async (req: Request) => {
     const mode: 'normal' | 'preview' =
       (params.get('mode') as 'normal' | 'preview') || 'normal';
     const topic: Topic = (params.get('topic') as Topic) || 'tech';
+
+    // Tạo cache key dựa trên mode và topic
+    const cacheKey = `${mode}-${topic}`;
+
+    // Kiểm tra cache
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log(`✅ Cache hit for ${cacheKey}`);
+      return Response.json(
+        {
+          blogs: cached.data,
+        },
+        {
+          status: 200,
+        },
+      );
+    }
+
+    console.log(`🔄 Cache miss, fetching new data for ${cacheKey}`);
 
     const selectedTopic = websitesForTopic[topic];
 
@@ -77,7 +100,7 @@ export const GET = async (req: Request) => {
       ).results;
     }
 
-    // Dịch toàn bộ nội dung sang tiếng Việt
+    // Dịch sang tiếng Việt với delay lớn hơn để tránh rate limit
     if (data.length > 0) {
       try {
         console.log(`🌐 Đang dịch ${data.length} tin tức sang tiếng Việt...`);
@@ -90,10 +113,10 @@ export const GET = async (req: Request) => {
         });
 
         if (textsToTranslate.length > 0) {
-          // Dịch theo batch để tối ưu (5 text mỗi batch)
+          // Dịch theo batch nhỏ (2 text mỗi batch) với delay lớn hơn
           const translations = await translateTextsInBatches(
             textsToTranslate,
-            5,
+            2, // Giảm batch size xuống 2
             'vi',
           );
 
@@ -119,6 +142,9 @@ export const GET = async (req: Request) => {
         // Nếu có lỗi trong quá trình dịch, vẫn trả về data gốc
       }
     }
+
+    // Lưu vào cache kết quả đã dịch
+    cache.set(cacheKey, { data, timestamp: Date.now() });
 
     return Response.json(
       {

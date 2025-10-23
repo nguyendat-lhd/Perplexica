@@ -1,18 +1,28 @@
 import { translateTextsInBatches } from '@/lib/translator';
+import { NextRequest } from 'next/server';
 
-export const POST = async (req: Request) => {
+/**
+ * API để dịch text lazy load
+ * Nhận array text và trả về array translated
+ */
+export const POST = async (req: NextRequest) => {
   try {
-    const { texts, targetLanguage = 'vi' } = await req.json();
+    const body = await req.json();
+    const { texts, targetLang = 'vi' } = body;
 
-    if (!texts || !Array.isArray(texts) || texts.length === 0) {
+    if (!texts || !Array.isArray(texts)) {
       return Response.json(
-        { message: 'Texts array is required' },
+        { message: 'Invalid request: texts must be an array' },
         { status: 400 },
       );
     }
 
-    // Dịch sử dụng MyMemory Translation API
-    const translations = await translateTextsInBatches(texts, 5, targetLanguage);
+    if (texts.length === 0) {
+      return Response.json({ translations: [] }, { status: 200 });
+    }
+
+    // Dịch theo batch nhỏ để tránh rate limit
+    const translations = await translateTextsInBatches(texts, 3, targetLang);
 
     return Response.json(
       {
@@ -23,10 +33,11 @@ export const POST = async (req: Request) => {
       },
     );
   } catch (err) {
-    console.error(`An error occurred in translate route: ${err}`);
+    console.error('Translation API error:', err);
     return Response.json(
       {
-        message: 'An error has occurred',
+        message: 'Translation failed - returning original texts',
+        translations: body.texts || [],
       },
       {
         status: 500,
@@ -34,4 +45,3 @@ export const POST = async (req: Request) => {
     );
   }
 };
-

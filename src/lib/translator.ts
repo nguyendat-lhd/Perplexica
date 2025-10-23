@@ -1,6 +1,6 @@
 /**
- * Dịch văn bản sang tiếng Việt sử dụng MyMemory Translation API
- * API miễn phí, không cần key, giới hạn 500 requests/day
+ * Multiple translation providers
+ * Fallback chain: Google Translate > MyMemory > No translation
  */
 
 interface TranslationResult {
@@ -9,9 +9,9 @@ interface TranslationResult {
 }
 
 /**
- * Dịch một văn bản đơn
+ * Google Translate (proxy miễn phí, không cần API key)
  */
-async function translateSingle(
+async function translateGoogle(
   text: string,
   targetLang: string = 'vi',
 ): Promise<string> {
@@ -20,9 +20,46 @@ async function translateSingle(
   }
 
   try {
-    // Encode text để tránh lỗi URL
-    const encodedText = encodeURIComponent(text.substring(0, 500)); // MyMemory giới hạn 500 ký tự
+    // Sử dụng proxy miễn phí không cần API key
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
 
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Google Translate API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (data && data[0] && data[0][0] && data[0][0][0]) {
+      return data[0][0][0];
+    }
+
+    return text;
+  } catch (error) {
+    console.error('Google Translate error:', error);
+    return text;
+  }
+}
+
+/**
+ * MyMemory Translation API (backup)
+ */
+async function translateMyMemory(
+  text: string,
+  targetLang: string = 'vi',
+): Promise<string> {
+  if (!text || text.trim().length === 0) {
+    return text;
+  }
+
+  try {
+    const encodedText = encodeURIComponent(text.substring(0, 500));
     const url = `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|${targetLang}`;
 
     const response = await fetch(url, {
@@ -33,8 +70,8 @@ async function translateSingle(
     });
 
     if (!response.ok) {
-      console.error('Translation API error:', response.statusText);
-      return text; // Trả về text gốc nếu có lỗi
+      console.error('MyMemory API error:', response.statusText);
+      return text;
     }
 
     const data = await response.json();
@@ -45,8 +82,39 @@ async function translateSingle(
 
     return text;
   } catch (error) {
-    console.error('Translation error:', error);
-    return text; // Trả về text gốc nếu có lỗi
+    console.error('MyMemory error:', error);
+    return text;
+  }
+}
+
+/**
+ * Main translation function with fallback
+ */
+async function translateSingle(
+  text: string,
+  targetLang: string = 'vi',
+): Promise<string> {
+  if (!text || text.trim().length === 0) {
+    return text;
+  }
+
+  // Thử Google Translate trước
+  try {
+    const result = await translateGoogle(text, targetLang);
+    if (result && result !== text) {
+      return result;
+    }
+  } catch (error) {
+    console.warn('Google Translate failed, trying MyMemory...');
+  }
+
+  // Fallback sang MyMemory
+  try {
+    const result = await translateMyMemory(text, targetLang);
+    return result;
+  } catch (error) {
+    console.error('All translation methods failed');
+    return text;
   }
 }
 
@@ -65,7 +133,7 @@ export async function translateTexts(
     results.push(translated);
 
     // Delay nhỏ giữa các request để tránh rate limit
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   return results;
@@ -83,17 +151,24 @@ export async function translateTextsInBatches(
 
   for (let i = 0; i < texts.length; i += batchSize) {
     const batch = texts.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((text) => translateSingle(text, targetLang)),
-    );
+
+    // Dịch tuần tự với delay ngắn hơn vì Google Translate ổn định hơn
+    const batchResults: string[] = [];
+    for (const text of batch) {
+      const translated = await translateSingle(text, targetLang);
+      batchResults.push(translated);
+      // Delay ngắn hơn vì Google Translate tốt hơn
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+
     results.push(...batchResults);
 
     // Delay giữa các batch
     if (i + batchSize < texts.length) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      console.log(`⏳ Đang đợi trước khi dịch batch tiếp theo...`);
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }
 
   return results;
 }
-
