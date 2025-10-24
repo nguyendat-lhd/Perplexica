@@ -19,9 +19,9 @@ API_KEY = "7864229fc2c1456691354b14fc0bf409.CVcNCXDV450XMBKI"
 API_URL = "https://api.z.ai/api/coding/paas/v4"
 MODEL_NAME = "glm-4.5"
 
-[MODELS.OLLAMA]
-API_URL = "http://localhost:11434"
-API_KEY = ""
+#[MODELS.OLLAMA]
+#API_URL = "http://localhost:11434"
+#API_KEY = ""
 
 [MODELS.DEEPSEEK]
 API_KEY = ""
@@ -32,9 +32,9 @@ API_KEY = ""
 [MODELS.LM_STUDIO]
 API_URL = "http://localhost:1234"
 
-[MODELS.LEMONADE]
-API_URL = "http://localhost:8000"
-API_KEY = ""
+#[MODELS.LEMONADE]
+#API_URL = "http://localhost:8000"
+#API_KEY = ""
 
 [API_ENDPOINTS]
 SEARXNG = "https://searchweb.trangvang.ai"
