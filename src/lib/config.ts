@@ -29,7 +29,7 @@ interface Config {
     GEMINI: {
       API_KEY: string;
     };
-    OLLAMA: {
+    OLLAMA?: {
       API_URL: string;
       API_KEY: string;
     };
@@ -42,7 +42,7 @@ interface Config {
     LM_STUDIO: {
       API_URL: string;
     };
-    LEMONADE: {
+    LEMONADE?: {
       API_URL: string;
       API_KEY: string;
     };
@@ -91,9 +91,9 @@ export const getGeminiApiKey = () =>
 export const getSearxngApiEndpoint = () =>
   process.env.SEARXNG_URL || loadConfig().API_ENDPOINTS.SEARXNG;
 
-export const getOllamaApiEndpoint = () => loadConfig().MODELS.OLLAMA.API_URL;
+export const getOllamaApiEndpoint = () => loadConfig().MODELS.OLLAMA?.API_URL || '';
 
-export const getOllamaApiKey = () => loadConfig().MODELS.OLLAMA.API_KEY;
+export const getOllamaApiKey = () => loadConfig().MODELS.OLLAMA?.API_KEY || '';
 
 export const getDeepseekApiKey = () => loadConfig().MODELS.DEEPSEEK.API_KEY;
 
@@ -112,9 +112,9 @@ export const getLMStudioApiEndpoint = () =>
   loadConfig().MODELS.LM_STUDIO.API_URL;
 
 export const getLemonadeApiEndpoint = () =>
-  loadConfig().MODELS.LEMONADE.API_URL;
+  loadConfig().MODELS.LEMONADE?.API_URL || '';
 
-export const getLemonadeApiKey = () => loadConfig().MODELS.LEMONADE.API_KEY;
+export const getLemonadeApiKey = () => loadConfig().MODELS.LEMONADE?.API_KEY || '';
 
 const mergeConfigs = (current: any, update: any): any => {
   if (update === null || update === undefined) {
