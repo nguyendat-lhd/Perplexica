@@ -3,13 +3,22 @@
   "version": "1.11.0-rc3",
   "license": "MIT",
   "author": "ItzCrazyKns",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "npm run db:migrate && next build",
     "start": "next start",
     "lint": "next lint",
     "format:write": "prettier . --write",
-    "db:migrate": "node ./src/lib/db/migrate.ts"
+    "db:migrate": "node ./src/lib/db/migrate.ts",
+    "mcp:server": "tsx src/mcp/index.ts",
+    "mcp:dev": "tsx watch src/mcp/index.ts",
+    "mcp:http-server": "tsx src/mcp/http-server.ts",
+    "start:mcp": "tsx src/mcp/http-server.ts",
+    "research:vbee": "tsx vbee-research-runner.ts",
+    "research:vbee:direct": "tsx vbee-research-direct.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
@@ -24,6 +33,7 @@
     "@langchain/ollama": "^0.2.3",
     "@langchain/openai": "^0.6.2",
     "@langchain/textsplitters": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.21.1",
     "@tailwindcss/typography": "^0.5.12",
     "@xenova/transformers": "^2.17.2",
     "axios": "^1.8.3",
@@ -47,6 +57,7 @@
     "react-textarea-autosize": "^8.5.3",
     "sonner": "^1.4.41",
     "tailwind-merge": "^2.2.2",
+    "vm2": "^3.10.0",
     "winston": "^3.17.0",
     "yet-another-react-lightbox": "^3.17.2",
     "zod": "^3.22.4"
@@ -66,6 +77,7 @@
     "postcss": "^8",
     "prettier": "^3.2.5",
     "tailwindcss": "^3.3.0",
+    "tsx": "^4.20.6",
     "typescript": "^5"
   }
 }
