@@ -10,6 +10,7 @@ if (typeof window === 'undefined') {
 }
 
 const configFileName = 'config.toml';
+const sampleConfigFileName = 'sample.config.toml';
 
 interface Config {
   GENERAL: {
@@ -64,8 +65,64 @@ type RecursivePartial<T> = {
 const loadConfig = () => {
   // Server-side only
   if (typeof window === 'undefined') {
+    const configPath = path.join(process.cwd(), configFileName);
+    const sampleConfigPath = path.join(process.cwd(), sampleConfigFileName);
+    
+    // If config.toml doesn't exist, create it from sample.config.toml
+    if (!fs.existsSync(configPath)) {
+      if (fs.existsSync(sampleConfigPath)) {
+        // Copy sample.config.toml to config.toml
+        const sampleConfig = fs.readFileSync(sampleConfigPath, 'utf-8');
+        fs.writeFileSync(configPath, sampleConfig);
+      } else {
+        // Create a default config.toml if sample doesn't exist
+        const defaultConfig = `[GENERAL]
+SIMILARITY_MEASURE = "cosine"
+KEEP_ALIVE = "5m"
+
+[MODELS.OPENAI]
+API_KEY = ""
+
+[MODELS.GROQ]
+API_KEY = ""
+
+[MODELS.ANTHROPIC]
+API_KEY = ""
+
+[MODELS.GEMINI]
+API_KEY = ""
+
+[MODELS.CUSTOM_OPENAI]
+API_KEY = ""
+API_URL = ""
+MODEL_NAME = ""
+
+[MODELS.OLLAMA]
+API_URL = ""
+API_KEY = ""
+
+[MODELS.DEEPSEEK]
+API_KEY = ""
+
+[MODELS.AIMLAPI]
+API_KEY = ""
+
+[MODELS.LM_STUDIO]
+API_URL = ""
+
+[MODELS.LEMONADE]
+API_URL = ""
+API_KEY = ""
+
+[API_ENDPOINTS]
+SEARXNG = ""
+`;
+        fs.writeFileSync(configPath, defaultConfig);
+      }
+    }
+    
     return toml.parse(
-      fs.readFileSync(path.join(process.cwd(), `${configFileName}`), 'utf-8'),
+      fs.readFileSync(configPath, 'utf-8'),
     ) as any as Config;
   }
 
