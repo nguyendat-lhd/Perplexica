@@ -20,7 +20,7 @@
     "start:mcp": "bun run --filter=@perplexica/mcp-server start",
     "lint": "next lint",
     "format:write": "prettier . --write",
-    "db:migrate": "node ./src/lib/db/migrate.ts",
+    "db:migrate": "tsx ./src/lib/db/migrate.ts",
     "mcp:server": "bun run --filter=@perplexica/mcp-server start:stdio",
     "mcp:dev": "bun run --filter=@perplexica/mcp-server dev",
     "mcp:http-server": "bun run --filter=@perplexica/mcp-server start",

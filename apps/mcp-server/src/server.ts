@@ -68,16 +68,16 @@ export class PerplexicaMCPServer {
       try {
         switch (name) {
           case 'perplexica_search':
-            return await this.handleSearch(args as SearchParams);
+            return await this.handleSearch(args as unknown as SearchParams);
 
           case 'perplexica_chat':
-            return await this.handleChat(args as ChatParams);
+            return await this.handleChat(args as unknown as ChatParams);
 
           case 'perplexica_search_images':
-            return await this.handleImageSearch(args as ImageSearchParams);
+            return await this.handleImageSearch(args as unknown as ImageSearchParams);
 
           case 'perplexica_search_videos':
-            return await this.handleVideoSearch(args as VideoSearchParams);
+            return await this.handleVideoSearch(args as unknown as VideoSearchParams);
 
           case 'perplexica_get_models':
             return await this.handleGetModels();
@@ -86,7 +86,7 @@ export class PerplexicaMCPServer {
             return await this.handleGetConfig();
 
           case 'perplexica_search_tools':
-            return await this.handleSearchTools(args as { query: string; detailLevel?: 'name' | 'summary' | 'full' });
+            return await this.handleSearchTools(args as unknown as { query: string; detailLevel?: 'name' | 'summary' | 'full' });
 
           default:
             throw new Error(`Unknown tool: ${name}`);
