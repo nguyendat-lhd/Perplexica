@@ -1,12 +1,8 @@
-# Disable bot detection completely for API requests
+# Disable bot detection by setting very high limits
 # This allows Perplexica to make requests without being blocked
-[botdetection]
-enabled = false
-
-# Alternative: If you want to keep bot detection but make it less strict:
-# [botdetection.ip_limit]
-# link_token = true
-# strict_limit = false
-# ip_limit = 10000
-# ban_time = 0
-# max_ban_time = 0
+[botdetection.ip_limit]
+link_token = true
+strict_limit = false
+ip_limit = 100000
+ban_time = 0
+max_ban_time = 0
