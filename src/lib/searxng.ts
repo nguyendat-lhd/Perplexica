@@ -25,6 +25,10 @@ export const searchSearxng = async (
 ) => {
   const searxngURL = getSearxngApiEndpoint();
 
+  if (!searxngURL) {
+    throw new Error('SearXNG API URL is not configured. Please set SEARXNG_API_URL environment variable or configure in config.toml');
+  }
+
   const url = new URL(`${searxngURL}/search?format=json`);
   url.searchParams.append('q', query);
 
@@ -39,10 +43,19 @@ export const searchSearxng = async (
     });
   }
 
-  const res = await axios.get(url.toString());
+  try {
+    const res = await axios.get(url.toString(), {
+      timeout: 10000, // 10 second timeout
+    });
 
-  const results: SearxngSearchResult[] = res.data.results;
-  const suggestions: string[] = res.data.suggestions;
+    const results: SearxngSearchResult[] = res.data.results || [];
+    const suggestions: string[] = res.data.suggestions || [];
 
-  return { results, suggestions };
+    return { results, suggestions };
+  } catch (error: any) {
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      throw new Error(`Cannot connect to SearXNG at ${searxngURL}. Please check SEARXNG_API_URL configuration.`);
+    }
+    throw error;
+  }
 };

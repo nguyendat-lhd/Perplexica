@@ -35,45 +35,52 @@ export const GET = async (req: Request) => {
 
     const selectedTopic = websitesForTopic[topic];
 
-    let data = [];
+    let data: any[] = [];
 
     if (mode === 'normal') {
       const seenUrls = new Set();
 
-      data = (
-        await Promise.all(
-          selectedTopic.links.flatMap((link) =>
-            selectedTopic.query.map(async (query) => {
-              return (
-                await searchSearxng(`site:${link} ${query}`, {
-                  engines: ['bing news'],
-                  pageno: 1,
-                  language: 'en',
-                })
-              ).results;
-            }),
-          ),
-        )
-      )
-        .flat()
+      const searchPromises = selectedTopic.links.flatMap((link) =>
+        selectedTopic.query.map(async (query) => {
+          try {
+            const result = await searchSearxng(`site:${link} ${query}`, {
+              engines: ['bing news'],
+              pageno: 1,
+              language: 'en',
+            });
+            return result.results || [];
+          } catch (error) {
+            console.error(`Error searching for ${query} on ${link}:`, error);
+            return [];
+          }
+        }),
+      );
+
+      data = (await Promise.allSettled(searchPromises))
+        .filter((result) => result.status === 'fulfilled')
+        .flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
         .filter((item) => {
-          const url = item.url?.toLowerCase().trim();
-          if (seenUrls.has(url)) return false;
+          const url = item?.url?.toLowerCase().trim();
+          if (!url || seenUrls.has(url)) return false;
           seenUrls.add(url);
           return true;
         })
         .sort(() => Math.random() - 0.5);
     } else {
-      data = (
-        await searchSearxng(
+      try {
+        const result = await searchSearxng(
           `site:${selectedTopic.links[Math.floor(Math.random() * selectedTopic.links.length)]} ${selectedTopic.query[Math.floor(Math.random() * selectedTopic.query.length)]}`,
           {
             engines: ['bing news'],
             pageno: 1,
             language: 'en',
           },
-        )
-      ).results;
+        );
+        data = result.results || [];
+      } catch (error) {
+        console.error('Error in preview mode:', error);
+        data = [];
+      }
     }
 
     return Response.json(
