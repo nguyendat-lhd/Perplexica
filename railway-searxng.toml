@@ -1,0 +1,17 @@
+# Railway Config-as-Code cho SearXNG Service
+# 
+# LƯU Ý: Railway không thể tự động đọc file này vì SearXNG service 
+# cùng root directory với Perplexica App service.
+# 
+# Cách sử dụng:
+# 1. Copy nội dung này vào Railway Dashboard → SearXNG Service → Settings → Deploy
+# 2. Hoặc set thủ công trên Dashboard (khuyến nghị)
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.searxng"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
