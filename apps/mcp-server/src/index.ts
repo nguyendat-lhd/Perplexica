@@ -10,7 +10,7 @@
  *   npm run mcp:server
  */
 
-import { PerplexicaMCPServer } from './server.js';
+import { PerplexicaMCPServer } from './server';
 
 const server = new PerplexicaMCPServer({
   name: 'perplexica-mcp-server',

@@ -57,13 +57,14 @@ function generateToolCode(tool: Tool): string {
   };
 
   const inputInterface = generateInterface(tool.inputSchema, `${functionName.charAt(0).toUpperCase() + functionName.slice(1)}Input`);
+  const description = tool.description || `Perplexica ${functionName} tool`;
 
-  return `// ${tool.description}
+  return `// ${description}
 
 ${inputInterface}
 
 /**
- * ${tool.description}
+ * ${description}
  */
 export async function ${functionName}(input: ${functionName.charAt(0).toUpperCase() + functionName.slice(1)}Input): Promise<any> {
   return callMCPTool('${tool.name}', input);
@@ -104,7 +105,7 @@ export * from './getConfig.js';
     files[filePath] = {
       name: functionName,
       path: filePath,
-      description: tool.description,
+      description: tool.description || `Perplexica ${functionName} tool`,
       code: generateToolCode(tool),
       schema: tool.inputSchema,
     };
@@ -145,7 +146,7 @@ export function searchTools(
   
   for (const tool of allTools) {
     const matchesName = tool.name.toLowerCase().includes(lowerQuery);
-    const matchesDescription = tool.description.toLowerCase().includes(lowerQuery);
+    const matchesDescription = tool.description?.toLowerCase().includes(lowerQuery) || false;
     
     if (matchesName || matchesDescription) {
       const functionName = tool.name.replace('perplexica_', '').replace(/_/g, '');
@@ -155,9 +156,9 @@ export function searchTools(
       if (detailLevel === 'name') {
         description = tool.name;
       } else if (detailLevel === 'summary') {
-        description = tool.description.split('\n')[0]; // First line only
+        description = tool.description?.split('\n')[0] || tool.name; // First line only
       } else {
-        description = tool.description;
+        description = tool.description || tool.name;
       }
       
       results.push({

@@ -13,15 +13,15 @@
 import { VM } from 'vm2';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { PerplexicaAPI } from './api.js';
+import { PerplexicaAPI } from './api';
 import { 
   getToolsAsFilesystem, 
   getToolByPath, 
   searchTools, 
   listServers, 
   listServerTools 
-} from './filesystem-discovery.js';
-import { saveSkill, loadSkill, listSkills, builtInSkills } from './skills.js';
+} from './filesystem-discovery';
+import { saveSkill, loadSkill, listSkills, builtInSkills } from './skills';
 
 export interface CodeExecutionResult {
   success: boolean;

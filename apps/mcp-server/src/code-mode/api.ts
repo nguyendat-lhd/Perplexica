@@ -16,7 +16,7 @@ import type {
   ImageResult,
   VideoSearchParams,
   VideoResult,
-} from '../types/index.js';
+} from '../types/index';
 
 /**
  * Perplexica API Client

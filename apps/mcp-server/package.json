@@ -5,20 +5,20 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "dev": "bun --watch src/http-server.ts",
-    "start": "bun src/http-server.ts",
-    "start:stdio": "bun src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target node"
+    "dev": "tsx watch src/http-server.ts",
+    "start": "tsx src/http-server.ts",
+    "start:stdio": "tsx src/index.ts",
+    "build": "tsc --build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.21.1",
     "axios": "^1.8.3",
-    "vm2": "^3.10.0"
+    "vm2": "^3.10.0",
+    "tsx": "^4.20.6"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "typescript": "^5.0.0",
-    "tsx": "^4.20.6"
+    "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
