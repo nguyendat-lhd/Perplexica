@@ -120,38 +120,41 @@ export const getAvailableChatModelProviders = async () => {
   const customOpenAiApiUrl = getCustomOpenaiApiUrl();
   const customOpenAiModelName = getCustomOpenaiModelName();
 
-  models['custom_openai'] = {
-    ...(customOpenAiApiKey && customOpenAiApiUrl && customOpenAiModelName
-      ? {
-          [customOpenAiModelName]: {
-            displayName: customOpenAiModelName,
-            model: new ChatOpenAI({
-              apiKey: customOpenAiApiKey,
-              modelName: customOpenAiModelName,
-              ...(() => {
-                const temperatureRestrictedModels = [
-                  'gpt-5-nano',
-                  'gpt-5',
-                  'gpt-5-mini',
-                  'o1',
-                  'o3',
-                  'o3-mini',
-                  'o4-mini',
-                ];
-                const isTemperatureRestricted =
-                  temperatureRestrictedModels.some((restrictedModel) =>
-                    customOpenAiModelName.includes(restrictedModel),
-                  );
-                return isTemperatureRestricted ? {} : { temperature: 0.7 };
-              })(),
-              configuration: {
-                baseURL: customOpenAiApiUrl,
-              },
-            }) as unknown as BaseChatModel,
+  // Always add custom_openai provider, even if not fully configured
+  // This allows users to configure it via Settings UI
+  if (customOpenAiApiKey && customOpenAiApiUrl && customOpenAiModelName) {
+    models['custom_openai'] = {
+      [customOpenAiModelName]: {
+        displayName: customOpenAiModelName,
+        model: new ChatOpenAI({
+          apiKey: customOpenAiApiKey,
+          modelName: customOpenAiModelName,
+          ...(() => {
+            const temperatureRestrictedModels = [
+              'gpt-5-nano',
+              'gpt-5',
+              'gpt-5-mini',
+              'o1',
+              'o3',
+              'o3-mini',
+              'o4-mini',
+            ];
+            const isTemperatureRestricted =
+              temperatureRestrictedModels.some((restrictedModel) =>
+                customOpenAiModelName.includes(restrictedModel),
+              );
+            return isTemperatureRestricted ? {} : { temperature: 0.7 };
+          })(),
+          configuration: {
+            baseURL: customOpenAiApiUrl,
           },
-        }
-      : {}),
-  };
+        }) as unknown as BaseChatModel,
+      },
+    };
+  } else {
+    // Add empty provider so it appears in Settings UI
+    models['custom_openai'] = {};
+  }
 
   return models;
 };

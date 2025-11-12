@@ -575,8 +575,9 @@ Khi deploy lên Railway:
    - Volume: `searxng/` config directory
 
 2. **Service 2: Web App**
-   - Build từ `app.dockerfile`
-   - Environment: `SEARXNG_API_URL=http://searxng:8080`
+   - Build từ NIXPACKS (không dùng Dockerfile)
+   - Environment: `SEARXNG_API_URL=http://searxng.railway.internal:8080`
+     - Hoặc: `http://<searxng-service-name>.railway.internal:8080`
    - Port: 3000
    - Dependencies: SearXNG service
 
