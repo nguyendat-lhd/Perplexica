@@ -1,8 +1,2 @@
-# Disable bot detection by setting very high limits
-# This allows Perplexica to make requests without being blocked
-[botdetection.ip_limit]
-link_token = true
-strict_limit = false
-ip_limit = 100000
-ban_time = 0
-max_ban_time = 0
+# Empty limiter configuration - SearXNG will use defaults
+# Bot detection is effectively disabled by using default (permissive) settings
