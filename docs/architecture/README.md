@@ -72,7 +72,7 @@ Perplexica là một công cụ tìm kiếm AI mã nguồn mở được xây d�
 1. **Frontend Layer**: Giao diện người dùng React/Next.js
 2. **API Layer**: Next.js API routes xử lý HTTP requests
 3. **Business Logic Layer**: Các chains, agents, và providers xử lý logic nghiệp vụ
-4. **External Services**: SearXNG, LLM providers, Database
+4. **External Services**: SearXNG (required, Docker), LLM providers, Database
 
 ---
 
@@ -365,7 +365,7 @@ apps/
 - **Multiple LLM Providers**: OpenAI, Anthropic, Groq, etc.
 
 ### External Services
-- **SearXNG**: Meta search engine
+- **SearXNG**: Meta search engine (required, chạy trong Docker)
 - **Various LLM APIs**: OpenAI, Anthropic, Groq, etc.
 
 ### MCP
@@ -488,6 +488,109 @@ export const GET = async (req: Request) => {
 - Check logs trong console
 - LangChain tracing: Enable trong chain config
 - Database: Query trực tiếp SQLite file
+
+---
+
+## Deployment
+
+### Web App Service với Docker
+
+Web App cần deploy bằng **Docker** vì phụ thuộc vào **SearXNG** service.
+
+#### Kiến trúc Deployment
+
+```
+┌─────────────────┐
+│  SearXNG        │  Port 4000 (internal: 8080)
+│  (Docker)       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Perplexica     │  Port 3000
+│  Web App        │  SEARXNG_API_URL=http://searxng:8080
+│  (Docker)       │
+└─────────────────┘
+```
+
+#### Docker Compose Setup
+
+Sử dụng `docker-compose.yaml` để deploy cả SearXNG và Web App:
+
+```yaml
+services:
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    ports:
+      - 4000:8080
+    networks:
+      - perplexica-network
+    restart: unless-stopped
+
+  app:
+    image: itzcrazykns1337/perplexica:main
+    build:
+      context: .
+      dockerfile: app.dockerfile
+    environment:
+      - SEARXNG_API_URL=http://searxng:8080
+      - DATA_DIR=/home/perplexica
+    ports:
+      - 3000:3000
+    networks:
+      - perplexica-network
+    volumes:
+      - backend-dbstore:/home/perplexica/data
+      - uploads:/home/perplexica/uploads
+      - ./config.toml:/home/perplexica/config.toml
+    restart: unless-stopped
+```
+
+#### Deploy Steps
+
+1. **Build và Start**:
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Environment Variables**:
+   - `SEARXNG_API_URL`: URL của SearXNG service (internal: `http://searxng:8080`)
+   - `DATA_DIR`: Directory cho database và data
+   - Các API keys trong `config.toml`
+
+3. **Volumes**:
+   - `backend-dbstore`: Database storage
+   - `uploads`: File uploads
+   - `config.toml`: Configuration file
+
+#### Railway Deployment với Docker
+
+Khi deploy lên Railway:
+
+1. **Service 1: SearXNG**
+   - Docker image: `docker.io/searxng/searxng:latest`
+   - Port: 8080 (internal)
+   - Volume: `searxng/` config directory
+
+2. **Service 2: Web App**
+   - Build từ `app.dockerfile`
+   - Environment: `SEARXNG_API_URL=http://searxng:8080`
+   - Port: 3000
+   - Dependencies: SearXNG service
+
+3. **Service 3: MCP Server** (Optional, standalone)
+   - Root Directory: `apps/mcp-server`
+   - Environment: `PERPLEXICA_BASE_URL=https://web-app-url.up.railway.app`
+   - Không cần Docker (chạy trực tiếp Node.js)
+
+#### Lưu ý
+
+- ✅ SearXNG và Web App phải cùng network để communicate
+- ✅ SearXNG phải start trước Web App
+- ✅ MCP Server có thể deploy riêng, không cần Docker (chỉ cần Node.js)
+- ✅ Web App cần SearXNG để hoạt động, không thể deploy standalone
 
 ---
 
