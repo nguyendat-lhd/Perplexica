@@ -77,8 +77,13 @@ export const GET = async (req: Request) => {
           },
         );
         data = result.results || [];
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error in preview mode:', error);
+        // Log more details about the error
+        if (error.response) {
+          console.error(`SearXNG error status: ${error.response.status}, message: ${error.message}`);
+        }
+        // Return empty array instead of crashing
         data = [];
       }
     }

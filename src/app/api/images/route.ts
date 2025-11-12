@@ -73,11 +73,28 @@ export const POST = async (req: Request) => {
     );
 
     return Response.json({ images }, { status: 200 });
-  } catch (err) {
+  } catch (err: any) {
     console.error(`An error occurred while searching images: ${err}`);
+    
+    // Provide more detailed error information
+    const errorMessage = err.message || 'An error occurred while searching images';
+    const statusCode = err.response?.status || 500;
+    
+    // Log more details for debugging
+    if (err.response) {
+      console.error(`SearXNG error details:`, {
+        status: err.response.status,
+        statusText: err.response.statusText,
+        data: err.response.data,
+      });
+    }
+    
     return Response.json(
-      { message: 'An error occurred while searching images' },
-      { status: 500 },
+      { 
+        message: errorMessage,
+        error: err.response?.data || undefined,
+      },
+      { status: statusCode },
     );
   }
 };
