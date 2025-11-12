@@ -70,9 +70,6 @@ export class PerplexicaMCPServer {
           case 'web_search':
             return await this.handleWebSearch(args as unknown as { query: string });
 
-          case 'web_search_20250305':
-            return await this.handleWebSearch(args as unknown as { query: string });
-
           case 'perplexica_search':
             return await this.handleSearch(args as unknown as SearchParams);
 

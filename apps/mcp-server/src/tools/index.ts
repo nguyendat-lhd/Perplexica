@@ -31,23 +31,6 @@ export const webSearchTool: Tool = {
   },
 };
 
-/**
- * Legacy Web Search tool - For backward compatibility
- */
-export const legacyWebSearchTool: Tool = {
-  name: 'web_search_20250305',
-  description: 'Perform web search using Perplexica (legacy compatibility)',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      query: {
-        type: 'string',
-        description: 'The search query',
-      },
-    },
-    required: ['query'],
-  },
-};
 
 /**
  * Search tool - Perform AI-powered search
@@ -320,7 +303,6 @@ This enables on-demand tool loading, reducing token usage compared to loading al
 
 export const allTools = [
   webSearchTool,
-  legacyWebSearchTool,
   searchTool,
   chatTool,
   imageSearchTool,
