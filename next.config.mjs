@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // output: 'standalone', // Temporarily disabled for Railway deployment
   images: {
     remotePatterns: [
       {
