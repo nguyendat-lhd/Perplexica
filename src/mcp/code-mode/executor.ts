@@ -10,7 +10,6 @@
  * https://www.anthropic.com/engineering/code-execution-with-mcp
  */
 
-import { VM } from 'vm2';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PerplexicaAPI } from './api';
@@ -22,6 +21,12 @@ import {
   listServerTools 
 } from './filesystem-discovery';
 import { saveSkill, loadSkill, listSkills, builtInSkills } from './skills';
+
+// Lazy-load vm2 to avoid build-time issues
+async function loadVM() {
+  const vm2 = await import('vm2');
+  return vm2.VM;
+}
 
 export interface CodeExecutionResult {
   success: boolean;
@@ -156,6 +161,7 @@ export async function executeCode(
     };
 
     // Create a sandboxed VM with enhanced capabilities
+    const VM = await loadVM();
     const vm = new VM({
       timeout: 30000, // 30 second timeout
       sandbox: {
