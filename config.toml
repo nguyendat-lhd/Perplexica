@@ -36,4 +36,4 @@ API_URL = ""
 API_KEY = ""
 
 [API_ENDPOINTS]
-SEARXNG = ""
+SEARXNG = "http://searxng.railway.internal:8080"

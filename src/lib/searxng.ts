@@ -23,10 +23,16 @@ export const searchSearxng = async (
   query: string,
   opts?: SearxngSearchOptions,
 ) => {
-  const searxngURL = getSearxngApiEndpoint();
+  let searxngURL = getSearxngApiEndpoint();
 
   if (!searxngURL) {
     throw new Error('SearXNG API URL is not configured. Please set SEARXNG_API_URL environment variable or configure in config.toml');
+  }
+
+  // Normalize URL: if it doesn't start with http:// or https://, add http://
+  // Also handle cases like "searxng:8080" or "searxng.railway.internal:8080"
+  if (!searxngURL.startsWith('http://') && !searxngURL.startsWith('https://')) {
+    searxngURL = `http://${searxngURL}`;
   }
 
   const url = new URL(`${searxngURL}/search?format=json`);
