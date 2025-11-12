@@ -62,10 +62,10 @@ export class PerplexicaAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Search failed: ${error.message || response.statusText}`);
+      throw new Error(`Search failed: ${(error as any)?.message || response.statusText}`);
     }
 
-    return response.json();
+    return response.json() as any;
   }
 
   /**
@@ -95,7 +95,7 @@ export class PerplexicaAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Search failed: ${error.message || response.statusText}`);
+      throw new Error(`Search failed: ${(error as any)?.message || response.statusText}`);
     }
 
     const reader = response.body?.getReader();
@@ -158,7 +158,7 @@ export class PerplexicaAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Chat failed: ${error.message || response.statusText}`);
+      throw new Error(`Chat failed: ${(error as any)?.message || response.statusText}`);
     }
 
     const reader = response.body?.getReader();
@@ -215,10 +215,10 @@ export class PerplexicaAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Image search failed: ${error.message || response.statusText}`);
+      throw new Error(`Image search failed: ${(error as any)?.message || response.statusText}`);
     }
 
-    return response.json();
+    return response.json() as any;
   }
 
   /**
@@ -246,10 +246,10 @@ export class PerplexicaAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Video search failed: ${error.message || response.statusText}`);
+      throw new Error(`Video search failed: ${(error as any)?.message || response.statusText}`);
     }
 
-    return response.json();
+    return response.json() as any;
   }
 
   /**
@@ -268,10 +268,10 @@ export class PerplexicaAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Failed to get models: ${error.message || response.statusText}`);
+      throw new Error(`Failed to get models: ${(error as any)?.message || response.statusText}`);
     }
 
-    return response.json();
+    return response.json() as any;
   }
 
   /**
@@ -287,10 +287,10 @@ export class PerplexicaAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Failed to get config: ${error.message || response.statusText}`);
+      throw new Error(`Failed to get config: ${(error as any)?.message || response.statusText}`);
     }
 
-    return response.json();
+    return response.json() as any;
   }
 }
 

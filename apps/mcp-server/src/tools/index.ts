@@ -14,6 +14,24 @@ import type {
 } from '../types';
 
 /**
+ * Web Search tool - Basic web search (for compatibility)
+ */
+export const webSearchTool: Tool = {
+  name: 'web_search',
+  description: 'Perform web search using Perplexica',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: 'The search query',
+      },
+    },
+    required: ['query'],
+  },
+};
+
+/**
  * Search tool - Perform AI-powered search
  */
 export const searchTool: Tool = {
@@ -98,6 +116,7 @@ export const chatTool: Tool = {
       },
       focusMode: {
         type: 'string',
+        enum: ['webSearch', 'academicSearch', 'writingAssistant', 'wolframAlphaSearch', 'youtubeSearch', 'redditSearch'],
         description: 'The focus mode for the chat',
       },
       optimizationMode: {
@@ -219,7 +238,13 @@ export const getModelsTool: Tool = {
   description: 'Get list of available chat and embedding models',
   inputSchema: {
     type: 'object',
-    properties: {},
+    properties: {
+      includeProvider: {
+        type: 'boolean',
+        description: 'Include provider information in results',
+        default: false,
+      },
+    },
   },
 };
 
@@ -231,7 +256,18 @@ export const getConfigTool: Tool = {
   description: 'Get current configuration including API keys status',
   inputSchema: {
     type: 'object',
-    properties: {},
+    properties: {
+      includeApiKeys: {
+        type: 'boolean',
+        description: 'Include API key status in results',
+        default: false,
+      },
+      includeModels: {
+        type: 'boolean',
+        description: 'Include available models in results',
+        default: false,
+      },
+    },
   },
 };
 
@@ -265,6 +301,7 @@ This enables on-demand tool loading, reducing token usage compared to loading al
 };
 
 export const allTools = [
+  webSearchTool,
   searchTool,
   chatTool,
   imageSearchTool,

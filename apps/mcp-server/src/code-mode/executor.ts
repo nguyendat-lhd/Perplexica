@@ -214,7 +214,7 @@ export async function executeCode(
         },
         
         // Basic utilities
-        setTimeout: (fn: Function, delay: number) => {
+        setTimeout: (fn: () => void, delay: number) => {
           return setTimeout(fn, Math.min(delay, 5000));
         },
         Promise,

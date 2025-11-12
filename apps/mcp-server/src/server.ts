@@ -67,6 +67,9 @@ export class PerplexicaMCPServer {
 
       try {
         switch (name) {
+          case 'web_search':
+            return await this.handleWebSearch(args as unknown as { query: string });
+
           case 'perplexica_search':
             return await this.handleSearch(args as unknown as SearchParams);
 
@@ -115,6 +118,28 @@ export class PerplexicaMCPServer {
     this.server.setRequestHandler(ReadResourceRequestSchema, async () => {
       throw new Error('Resources not implemented');
     });
+  }
+
+  private async handleWebSearch(params: { query: string }) {
+    // Convert simple web search params to full search params
+    const searchParams: SearchParams = {
+      query: params.query,
+      focusMode: 'webSearch',
+      optimizationMode: 'balanced',
+    };
+
+    const result = await this.api.search(searchParams);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            message: result.message,
+            sources: result.sources,
+          }, null, 2),
+        },
+      ],
+    };
   }
 
   private async handleSearch(params: SearchParams) {
