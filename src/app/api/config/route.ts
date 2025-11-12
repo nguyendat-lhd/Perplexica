@@ -43,6 +43,12 @@ export const GET = async (req: Request) => {
       });
     }
 
+    // Always include custom_openai provider, even if empty
+    // This allows users to configure it via Settings UI
+    if (!config['chatModelProviders']['custom_openai']) {
+      config['chatModelProviders']['custom_openai'] = [];
+    }
+
     for (const provider in embeddingModelProviders) {
       config['embeddingModelProviders'][provider] = Object.keys(
         embeddingModelProviders[provider],
