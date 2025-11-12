@@ -4,7 +4,7 @@
  * This file can be executed directly with tsx/node
  */
 
-import { PerplexicaMCPServer } from './server.js';
+import { PerplexicaMCPServer } from './server';
 
 // Log errors to stderr (MCP protocol requirement)
 process.on('uncaughtException', (error) => {

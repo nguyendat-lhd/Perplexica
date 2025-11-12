@@ -18,7 +18,7 @@
  */
 
 import http from 'http';
-import { PerplexicaMCPServer } from './server.js';
+import { PerplexicaMCPServer } from './server';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
 

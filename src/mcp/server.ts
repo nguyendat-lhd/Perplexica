@@ -13,9 +13,9 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { allTools } from './tools/index.js';
-import { PerplexicaAPI } from './code-mode/api.js';
-import { searchTools } from './code-mode/filesystem-discovery.js';
+import { allTools } from './tools/index';
+import { PerplexicaAPI } from './code-mode/api';
+import { searchTools } from './code-mode/filesystem-discovery';
 import type {
   SearchParams,
   ChatParams,

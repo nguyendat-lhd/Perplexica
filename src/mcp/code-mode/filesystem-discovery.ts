@@ -8,7 +8,7 @@
  * https://www.anthropic.com/engineering/code-execution-with-mcp
  */
 
-import { allTools } from '../tools/index.js';
+import { allTools } from '../tools/index';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 export interface ToolFile {
