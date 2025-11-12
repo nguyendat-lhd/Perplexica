@@ -147,3 +147,6 @@ Trong Cursor Developer Tools, tìm các messages:
 3. Check logs chi tiết
 4. Thử các giải pháp trên theo thứ tự
 
+
+
+
