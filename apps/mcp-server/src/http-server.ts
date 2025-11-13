@@ -117,11 +117,39 @@ const httpServer = http.createServer(async (req, res) => {
     // Handle request through transport
     await session.transport.handleRequest(req, res, body);
   } catch (error: any) {
-    console.error('[MCP] Request error:', error);
-    
+    console.error('[MCP] Request error:', {
+      error: error.message,
+      stack: error.stack,
+      cause: error.cause,
+      url: req.url,
+      method: req.method
+    });
+
     if (!res.headersSent) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: error.message || 'Internal server error' }));
+      let statusCode = 500;
+      let errorResponse = {
+        error: error.message || 'Internal server error',
+        type: 'INTERNAL_ERROR'
+      };
+
+      if (error.cause) {
+        if (error.cause.type === 'TIMEOUT') {
+          statusCode = 408; // Request Timeout
+          errorResponse = {
+            error: `Request timed out after ${error.cause.duration / 1000} seconds`,
+            type: 'TIMEOUT',
+            duration: error.cause.duration
+          } as any;
+        }
+        if (error.cause.status) {
+          statusCode = error.cause.status;
+          (errorResponse as any).status = error.cause.status;
+          (errorResponse as any).details = error.cause.details;
+        }
+      }
+
+      res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(errorResponse));
     }
   }
 });

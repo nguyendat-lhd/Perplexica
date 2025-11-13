@@ -95,16 +95,43 @@ export class PerplexicaMCPServer {
             throw new Error(`Unknown tool: ${name}`);
         }
       } catch (error: any) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error: ${error.message || 'Unknown error'}`,
-            },
-          ],
-          isError: true,
-        };
+      console.error('[MCP] Tool execution error:', {
+        tool: name,
+        error: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+
+      // Enhanced error response with structured information
+      let errorMessage = error.message || 'Unknown error';
+      let errorDetails = {};
+
+      if (error.cause) {
+        if (error.cause.type === 'TIMEOUT') {
+          errorMessage = `Request timed out after ${error.cause.duration / 1000} seconds`;
+        }
+        if (error.cause.status) {
+          errorDetails = {
+            statusCode: error.cause.status,
+            details: error.cause.details
+          };
+        }
       }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${errorMessage}`,
+          },
+          ...(Object.keys(errorDetails).length > 0 ? [{
+            type: 'text',
+            text: `\nDetails: ${JSON.stringify(errorDetails, null, 2)}`
+          }] : [])
+        ],
+        isError: true,
+      };
+    }
     });
 
     // List resources (if needed)

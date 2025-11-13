@@ -17,6 +17,8 @@ import type {
   VideoSearchParams,
   VideoResult,
 } from '../types/index';
+import { MCPTimeoutError, MCPNetworkError } from '../utils/errors';
+import { DEFAULT_TIMEOUTS } from '../config/timeouts';
 
 /**
  * Perplexica API Client
@@ -43,29 +45,55 @@ export class PerplexicaAPI {
    * console.log(result.message);
    */
   async search(params: SearchParams): Promise<SearchResult> {
-    const response = await fetch(`${this.baseUrl}/api/search`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: params.query,
-        focusMode: params.focusMode,
-        optimizationMode: params.optimizationMode || 'balanced',
-        chatModel: params.chatModel,
-        embeddingModel: params.embeddingModel,
-        history: params.history || [],
-        systemInstructions: params.systemInstructions,
-        stream: false,
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Search failed: ${(error as any)?.message || response.statusText}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/api/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: params.query,
+          focusMode: params.focusMode,
+          optimizationMode: params.optimizationMode || 'balanced',
+          chatModel: params.chatModel,
+          embeddingModel: params.embeddingModel,
+          history: params.history || [],
+          systemInstructions: params.systemInstructions,
+          stream: false,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        let errorDetails: any;
+        try {
+          errorDetails = await response.json();
+        } catch {
+          errorDetails = { message: response.statusText };
+        }
+        throw new Error(`Search failed: ${errorDetails.message || response.statusText}`, {
+          cause: { status: response.status, details: errorDetails }
+        } as any);
+      }
+
+      const result = await response.json();
+      return result as SearchResult;
+    } catch (error: any) {
+      clearTimeout(timeout);
+
+      if (error.name === 'AbortError') {
+        throw new Error('Search request timed out after 2 minutes', {
+          cause: { type: 'TIMEOUT', duration: 120000 }
+        } as any);
+      }
+
+      throw error;
     }
-
-    return response.json() as any;
   }
 
   /**
@@ -82,48 +110,79 @@ export class PerplexicaAPI {
    * }
    */
   async *searchStream(params: SearchParams): AsyncGenerator<{ type: string; data: any }> {
-    const response = await fetch(`${this.baseUrl}/api/search`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...params,
-        stream: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Search failed: ${(error as any)?.message || response.statusText}`);
-    }
-
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-
-    if (!reader) {
-      throw new Error('Failed to get response reader');
-    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout for streaming
 
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const response = await fetch(`${this.baseUrl}/api/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...params,
+          stream: true,
+        }),
+        signal: controller.signal,
+      });
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim());
+      clearTimeout(timeout);
 
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line);
-            yield data;
-          } catch (e) {
-            // Skip invalid JSON lines
+      if (!response.ok) {
+        let errorDetails: any;
+        try {
+          errorDetails = await response.json();
+        } catch {
+          errorDetails = { message: response.statusText };
+        }
+        throw new Error(`Search stream failed: ${errorDetails.message || response.statusText}`, {
+          cause: { status: response.status, details: errorDetails }
+        } as any);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('Failed to get response reader');
+      }
+
+      const streamTimeout = setTimeout(() => {
+        reader.cancel();
+      }, 300000); // 5 minutes stream timeout
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n').filter(line => line.trim());
+
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line);
+              yield data;
+            } catch (e) {
+              // Skip invalid JSON lines, but continue processing
+              console.warn('[MCP] Invalid JSON line in stream:', line);
+            }
           }
         }
+      } finally {
+        clearTimeout(streamTimeout);
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
+    } catch (error: any) {
+      clearTimeout(timeout);
+
+      if (error.name === 'AbortError') {
+        throw new Error('Search stream request timed out after 3 minutes', {
+          cause: { type: 'TIMEOUT', duration: 180000 }
+        } as any);
+      }
+
+      throw error;
     }
   }
 
@@ -148,45 +207,76 @@ export class PerplexicaAPI {
    * }
    */
   async *chat(params: ChatParams): AsyncGenerator<{ type: string; data: any; messageId?: string }> {
-    const response = await fetch(`${this.baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Chat failed: ${(error as any)?.message || response.statusText}`);
-    }
-
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-
-    if (!reader) {
-      throw new Error('Failed to get response reader');
-    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout for chat
 
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const response = await fetch(`${this.baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim());
+      clearTimeout(timeout);
 
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line);
-            yield data;
-          } catch (e) {
-            // Skip invalid JSON lines
+      if (!response.ok) {
+        let errorDetails: any;
+        try {
+          errorDetails = await response.json();
+        } catch {
+          errorDetails = { message: response.statusText };
+        }
+        throw new Error(`Chat failed: ${errorDetails.message || response.statusText}`, {
+          cause: { status: response.status, details: errorDetails }
+        } as any);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('Failed to get response reader');
+      }
+
+      const streamTimeout = setTimeout(() => {
+        reader.cancel();
+      }, 300000); // 5 minutes stream timeout
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n').filter(line => line.trim());
+
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line);
+              yield data;
+            } catch (e) {
+              // Skip invalid JSON lines, but continue processing
+              console.warn('[MCP] Invalid JSON line in chat stream:', line);
+            }
           }
         }
+      } finally {
+        clearTimeout(streamTimeout);
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
+    } catch (error: any) {
+      clearTimeout(timeout);
+
+      if (error.name === 'AbortError') {
+        throw new Error('Chat request timed out after 3 minutes', {
+          cause: { type: 'TIMEOUT', duration: 180000 }
+        } as any);
+      }
+
+      throw error;
     }
   }
 
@@ -201,24 +291,50 @@ export class PerplexicaAPI {
    * console.log(result.images);
    */
   async searchImages(params: ImageSearchParams): Promise<ImageResult> {
-    const response = await fetch(`${this.baseUrl}/api/images`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: params.query,
-        chatHistory: params.chatHistory || [],
-        chatModel: params.chatModel,
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90000); // 1.5 minutes timeout for image search
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Image search failed: ${(error as any)?.message || response.statusText}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/api/images`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: params.query,
+          chatHistory: params.chatHistory || [],
+          chatModel: params.chatModel,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        let errorDetails: any;
+        try {
+          errorDetails = await response.json();
+        } catch {
+          errorDetails = { message: response.statusText };
+        }
+        throw new Error(`Image search failed: ${errorDetails.message || response.statusText}`, {
+          cause: { status: response.status, details: errorDetails }
+        } as any);
+      }
+
+      const result = await response.json();
+      return result as ImageResult;
+    } catch (error: any) {
+      clearTimeout(timeout);
+
+      if (error.name === 'AbortError') {
+        throw new Error('Image search request timed out after 1.5 minutes', {
+          cause: { type: 'TIMEOUT', duration: 90000 }
+        } as any);
+      }
+
+      throw error;
     }
-
-    return response.json() as any;
   }
 
   /**
@@ -232,24 +348,50 @@ export class PerplexicaAPI {
    * console.log(result.videos);
    */
   async searchVideos(params: VideoSearchParams): Promise<VideoResult> {
-    const response = await fetch(`${this.baseUrl}/api/videos`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: params.query,
-        chatHistory: params.chatHistory || [],
-        chatModel: params.chatModel,
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90000); // 1.5 minutes timeout for video search
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Video search failed: ${(error as any)?.message || response.statusText}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/api/videos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: params.query,
+          chatHistory: params.chatHistory || [],
+          chatModel: params.chatModel,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        let errorDetails: any;
+        try {
+          errorDetails = await response.json();
+        } catch {
+          errorDetails = { message: response.statusText };
+        }
+        throw new Error(`Video search failed: ${errorDetails.message || response.statusText}`, {
+          cause: { status: response.status, details: errorDetails }
+        } as any);
+      }
+
+      const result = await response.json();
+      return result as VideoResult;
+    } catch (error: any) {
+      clearTimeout(timeout);
+
+      if (error.name === 'AbortError') {
+        throw new Error('Video search request timed out after 1.5 minutes', {
+          cause: { type: 'TIMEOUT', duration: 90000 }
+        } as any);
+      }
+
+      throw error;
     }
-
-    return response.json() as any;
   }
 
   /**
@@ -264,14 +406,41 @@ export class PerplexicaAPI {
     chatModelProviders: Record<string, any>;
     embeddingModelProviders: Record<string, any>;
   }> {
-    const response = await fetch(`${this.baseUrl}/api/models`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout for models
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Failed to get models: ${(error as any)?.message || response.statusText}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/api/models`, {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        let errorDetails: any;
+        try {
+          errorDetails = await response.json();
+        } catch {
+          errorDetails = { message: response.statusText };
+        }
+        throw new Error(`Failed to get models: ${errorDetails.message || response.statusText}`, {
+          cause: { status: response.status, details: errorDetails }
+        } as any);
+      }
+
+      const result = await response.json();
+      return result as any;
+    } catch (error: any) {
+      clearTimeout(timeout);
+
+      if (error.name === 'AbortError') {
+        throw new Error('Get models request timed out after 30 seconds', {
+          cause: { type: 'TIMEOUT', duration: 30000 }
+        } as any);
+      }
+
+      throw error;
     }
-
-    return response.json() as any;
   }
 
   /**
@@ -283,14 +452,41 @@ export class PerplexicaAPI {
    * console.log(config.chatModelProviders);
    */
   async getConfig(): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/api/config`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout for config
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Failed to get config: ${(error as any)?.message || response.statusText}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/api/config`, {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        let errorDetails: any;
+        try {
+          errorDetails = await response.json();
+        } catch {
+          errorDetails = { message: response.statusText };
+        }
+        throw new Error(`Failed to get config: ${errorDetails.message || response.statusText}`, {
+          cause: { status: response.status, details: errorDetails }
+        } as any);
+      }
+
+      const result = await response.json();
+      return result as any;
+    } catch (error: any) {
+      clearTimeout(timeout);
+
+      if (error.name === 'AbortError') {
+        throw new Error('Get config request timed out after 30 seconds', {
+          cause: { type: 'TIMEOUT', duration: 30000 }
+        } as any);
+      }
+
+      throw error;
     }
-
-    return response.json() as any;
   }
 }
 
