@@ -16,4 +16,9 @@ server:
 
 engines:
   - name: wolframalpha
+    engine: wolframalpha_api
+    api_key: 'K9X53GA7WE'
+    timeout: 6.0
     disabled: false
+  - name: brave
+    api_key: 'BSA0kSzQnIKYKAwT7NKBwjEK_cDMEdB'
