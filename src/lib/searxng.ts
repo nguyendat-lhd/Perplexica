@@ -19,7 +19,58 @@ interface SearxngSearchResult {
   iframe_src?: string;
 }
 
+// Simple in-memory cache to prevent duplicate requests
+interface CacheEntry {
+  results: { results: SearxngSearchResult[]; suggestions: string[] };
+  timestamp: number;
+}
+
+const searchCache = new Map<string, CacheEntry>();
+const CACHE_TTL = 30000; // 30 seconds cache TTL
+
+// Generate cache key from query and options
+const generateCacheKey = (query: string, opts?: SearxngSearchOptions): string => {
+  const optsStr = opts ? JSON.stringify(opts) : '';
+  return `${query}:${optsStr}`;
+};
+
+// Clean up old cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of searchCache.entries()) {
+    if (now - entry.timestamp > CACHE_TTL) {
+      searchCache.delete(key);
+    }
+  }
+}, CACHE_TTL);
+
+// Helper function to check if error is a rate limit error
+const isRateLimitError = (status: number, errorData: any): boolean => {
+  if (status === 429) {
+    return true;
+  }
+  
+  if (status === 403) {
+    // Check if error message indicates rate limiting
+    const errorMessage = errorData?.error || errorData?.message || '';
+    const errorString = String(errorMessage).toLowerCase();
+    
+    // Common rate limit indicators from SearXNG/Brave
+    if (
+      errorString.includes('too many request') ||
+      errorString.includes('rate limit') ||
+      errorString.includes('suspended_time') ||
+      errorString.includes('too many requests')
+    ) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
 // Helper function to make request with retry logic
+// IMPORTANT: Does NOT retry on rate limit errors (403, 429) to prevent making the problem worse
 const makeRequestWithRetry = async (
   url: string,
   headers: Record<string, string>,
@@ -41,9 +92,17 @@ const makeRequestWithRetry = async (
         return res;
       }
 
-      // If 403 and not last attempt, wait and retry
+      // Check if this is a rate limit error - DO NOT RETRY on rate limits
+      if (isRateLimitError(res.status, res.data)) {
+        console.warn(`SearXNG returned rate limit error (${res.status}). Not retrying to avoid making the problem worse.`);
+        // Return immediately without retrying
+        return res;
+      }
+
+      // If 403 but not a rate limit error, and not last attempt, wait and retry
+      // (Some 403s might be temporary bot detection issues)
       if (res.status === 403 && attempt < maxRetries) {
-        console.warn(`SearXNG returned 403, retrying in ${retryDelay}ms... (attempt ${attempt + 1}/${maxRetries + 1})`);
+        console.warn(`SearXNG returned 403 (non-rate-limit), retrying in ${retryDelay}ms... (attempt ${attempt + 1}/${maxRetries + 1})`);
         await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
         continue;
       }
@@ -67,6 +126,14 @@ export const searchSearxng = async (
   query: string,
   opts?: SearxngSearchOptions,
 ) => {
+  // Check cache first to avoid duplicate requests
+  const cacheKey = generateCacheKey(query, opts);
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`[SearXNG Cache Hit] Query: ${query.substring(0, 50)}...`);
+    return cached.results;
+  }
+
   let searxngURL = getSearxngApiEndpoint();
 
   if (!searxngURL) {
@@ -114,24 +181,53 @@ export const searchSearxng = async (
     // Check for 4xx errors manually
     if (res.status >= 400 && res.status < 500) {
       const errorMessage = res.data?.error || res.data?.message || `HTTP ${res.status}`;
+      
+      // Check for rate limit errors first
+      if (isRateLimitError(res.status, res.data)) {
+        const suspendedTime = res.data?.suspended_time || res.data?.suspendedTime || 'unknown';
+        console.error(`SearXNG rate limit error (${res.status}). URL: ${url.toString()}, Error: ${errorMessage}, Suspended time: ${suspendedTime}`);
+        throw new Error(`SearXNG rate limit exceeded (suspended_time=${suspendedTime}). Please wait before making more requests. Original error: ${errorMessage}`);
+      }
+      
       if (res.status === 403) {
-        console.error(`SearXNG returned 403 Forbidden after retries. URL: ${url.toString()}, Error: ${errorMessage}`);
+        console.error(`SearXNG returned 403 Forbidden. URL: ${url.toString()}, Error: ${errorMessage}`);
         throw new Error(`SearXNG rejected the request (403 Forbidden). This may be due to rate limiting or SearXNG bot detection. Please configure SearXNG to disable bot detection or use a different instance. Original error: ${errorMessage}`);
       }
+      
+      if (res.status === 429) {
+        throw new Error(`SearXNG rate limit exceeded (429). Please wait before making more requests. Error: ${errorMessage}`);
+      }
+      
       throw new Error(`SearXNG returned error ${res.status}: ${errorMessage}`);
     }
 
     const results: SearxngSearchResult[] = res.data.results || [];
     const suggestions: string[] = res.data.suggestions || [];
 
-    return { results, suggestions };
+    const searchResults = { results, suggestions };
+    
+    // Cache successful results
+    searchCache.set(cacheKey, {
+      results: searchResults,
+      timestamp: Date.now(),
+    });
+
+    return searchResults;
   } catch (error: any) {
     // Handle connection errors
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
       throw new Error(`Cannot connect to SearXNG at ${searxngURL}. Please check SEARXNG_API_URL configuration.`);
     }
     
-    // Handle 403 Forbidden errors (rate limiting or blocked requests)
+    // Handle rate limit errors (check first before generic 403)
+    if (error.response && isRateLimitError(error.response.status, error.response.data)) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Rate limit exceeded';
+      const suspendedTime = error.response?.data?.suspended_time || error.response?.data?.suspendedTime || 'unknown';
+      console.error(`SearXNG rate limit error. URL: ${url.toString()}, Status: ${error.response.status}, Error: ${errorMessage}, Suspended time: ${suspendedTime}`);
+      throw new Error(`SearXNG rate limit exceeded (suspended_time=${suspendedTime}). Please wait before making more requests. Original error: ${errorMessage}`);
+    }
+    
+    // Handle 403 Forbidden errors (non-rate-limit)
     if (error.response?.status === 403) {
       const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Forbidden';
       console.error(`SearXNG returned 403 Forbidden. URL: ${url.toString()}, Error: ${errorMessage}`);
@@ -140,7 +236,8 @@ export const searchSearxng = async (
     
     // Handle 429 Too Many Requests
     if (error.response?.status === 429) {
-      throw new Error('SearXNG rate limit exceeded. Please wait a moment before trying again.');
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Too many requests';
+      throw new Error(`SearXNG rate limit exceeded (429). Please wait before making more requests. Error: ${errorMessage}`);
     }
     
     // Handle other HTTP errors
