@@ -13,23 +13,6 @@ import type {
   VideoSearchParams,
 } from '../types';
 
-/**
- * Web Search tool - Basic web search (for compatibility)
- */
-export const webSearchTool: Tool = {
-  name: 'web_search',
-  description: 'Perform web search using Perplexica',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      query: {
-        type: 'string',
-        description: 'The search query',
-      },
-    },
-    required: ['query'],
-  },
-};
 
 
 /**
@@ -37,13 +20,19 @@ export const webSearchTool: Tool = {
  */
 export const searchTool: Tool = {
   name: 'perplexica_search',
-  description: `Perform an AI-powered search using Perplexica. Supports multiple focus modes:
-- webSearch: General web search
+  description: `Perform an AI-powered search using Perplexica. This is the main search tool that supports:
+
+For basic web search: Just provide the query parameter (defaults to webSearch mode)
+
+Advanced search options:
+- webSearch: General web search (default)
 - academicSearch: Academic papers and research
 - writingAssistant: Writing assistance without web search
 - wolframAlphaSearch: Mathematical and computational queries
 - youtubeSearch: YouTube video search
-- redditSearch: Reddit discussions and opinions`,
+- redditSearch: Reddit discussions and opinions
+
+Optimization modes: speed, balanced (default), quality`,
   inputSchema: {
     type: 'object',
     properties: {
@@ -302,7 +291,6 @@ This enables on-demand tool loading, reducing token usage compared to loading al
 };
 
 export const allTools = [
-  webSearchTool,
   searchTool,
   chatTool,
   imageSearchTool,

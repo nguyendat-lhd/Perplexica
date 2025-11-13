@@ -67,9 +67,6 @@ export class PerplexicaMCPServer {
 
       try {
         switch (name) {
-          case 'web_search':
-            return await this.handleWebSearch(args as unknown as { query: string });
-
           case 'perplexica_search':
             return await this.handleSearch(args as unknown as SearchParams);
 
@@ -147,30 +144,16 @@ export class PerplexicaMCPServer {
     });
   }
 
-  private async handleWebSearch(params: { query: string }) {
-    // Convert simple web search params to full search params
+  
+  private async handleSearch(params: SearchParams) {
+    // Set default values for basic web search compatibility
     const searchParams: SearchParams = {
-      query: params.query,
-      focusMode: 'webSearch',
-      optimizationMode: 'balanced',
+      ...params,
+      focusMode: params.focusMode || 'webSearch',
+      optimizationMode: params.optimizationMode || 'balanced',
     };
 
     const result = await this.api.search(searchParams);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            message: result.message,
-            sources: result.sources,
-          }, null, 2),
-        },
-      ],
-    };
-  }
-
-  private async handleSearch(params: SearchParams) {
-    const result = await this.api.search(params);
     return {
       content: [
         {
