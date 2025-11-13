@@ -18,7 +18,7 @@ import type {
   VideoResult,
 } from '../types/index';
 import { MCPTimeoutError, MCPNetworkError } from '../utils/errors';
-import { DEFAULT_TIMEOUTS } from '../config/timeouts';
+import { DEFAULT_TIMEOUTS, TIMEOUT_CONFIG } from '../config/timeouts';
 
 /**
  * Perplexica API Client
@@ -46,7 +46,7 @@ export class PerplexicaAPI {
    */
   async search(params: SearchParams): Promise<SearchResult> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.SEARCH); // 3 minutes timeout
 
     try {
       const response = await fetch(`${this.baseUrl}/api/search`, {
@@ -87,8 +87,8 @@ export class PerplexicaAPI {
       clearTimeout(timeout);
 
       if (error.name === 'AbortError') {
-        throw new Error('Search request timed out after 2 minutes', {
-          cause: { type: 'TIMEOUT', duration: 120000 }
+        throw new Error('Search request timed out after 3 minutes', {
+          cause: { type: 'TIMEOUT', duration: TIMEOUT_CONFIG.SEARCH }
         } as any);
       }
 
@@ -111,7 +111,7 @@ export class PerplexicaAPI {
    */
   async *searchStream(params: SearchParams): AsyncGenerator<{ type: string; data: any }> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout for streaming
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.STREAM); // 5 minutes timeout for streaming
 
     try {
       const response = await fetch(`${this.baseUrl}/api/search`, {
@@ -149,7 +149,7 @@ export class PerplexicaAPI {
 
       const streamTimeout = setTimeout(() => {
         reader.cancel();
-      }, 300000); // 5 minutes stream timeout
+      }, TIMEOUT_CONFIG.STREAM_DURATION); // 7 minutes stream timeout
 
       try {
         while (true) {
@@ -177,8 +177,8 @@ export class PerplexicaAPI {
       clearTimeout(timeout);
 
       if (error.name === 'AbortError') {
-        throw new Error('Search stream request timed out after 3 minutes', {
-          cause: { type: 'TIMEOUT', duration: 180000 }
+        throw new Error('Search stream request timed out after 5 minutes', {
+          cause: { type: 'TIMEOUT', duration: TIMEOUT_CONFIG.STREAM }
         } as any);
       }
 
@@ -208,7 +208,7 @@ export class PerplexicaAPI {
    */
   async *chat(params: ChatParams): AsyncGenerator<{ type: string; data: any; messageId?: string }> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout for chat
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.STREAM); // 5 minutes timeout for chat
 
     try {
       const response = await fetch(`${this.baseUrl}/api/chat`, {
@@ -243,7 +243,7 @@ export class PerplexicaAPI {
 
       const streamTimeout = setTimeout(() => {
         reader.cancel();
-      }, 300000); // 5 minutes stream timeout
+      }, TIMEOUT_CONFIG.STREAM_DURATION); // 7 minutes stream timeout
 
       try {
         while (true) {
@@ -271,8 +271,8 @@ export class PerplexicaAPI {
       clearTimeout(timeout);
 
       if (error.name === 'AbortError') {
-        throw new Error('Chat request timed out after 3 minutes', {
-          cause: { type: 'TIMEOUT', duration: 180000 }
+        throw new Error('Chat request timed out after 5 minutes', {
+          cause: { type: 'TIMEOUT', duration: TIMEOUT_CONFIG.STREAM }
         } as any);
       }
 
@@ -292,7 +292,7 @@ export class PerplexicaAPI {
    */
   async searchImages(params: ImageSearchParams): Promise<ImageResult> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90000); // 1.5 minutes timeout for image search
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.IMAGE_SEARCH); // 3 minutes timeout for image search
 
     try {
       const response = await fetch(`${this.baseUrl}/api/images`, {
@@ -328,8 +328,8 @@ export class PerplexicaAPI {
       clearTimeout(timeout);
 
       if (error.name === 'AbortError') {
-        throw new Error('Image search request timed out after 1.5 minutes', {
-          cause: { type: 'TIMEOUT', duration: 90000 }
+        throw new Error('Image search request timed out after 3 minutes', {
+          cause: { type: 'TIMEOUT', duration: TIMEOUT_CONFIG.IMAGE_SEARCH }
         } as any);
       }
 
@@ -349,7 +349,7 @@ export class PerplexicaAPI {
    */
   async searchVideos(params: VideoSearchParams): Promise<VideoResult> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90000); // 1.5 minutes timeout for video search
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.VIDEO_SEARCH); // 3 minutes timeout for video search
 
     try {
       const response = await fetch(`${this.baseUrl}/api/videos`, {
@@ -385,8 +385,8 @@ export class PerplexicaAPI {
       clearTimeout(timeout);
 
       if (error.name === 'AbortError') {
-        throw new Error('Video search request timed out after 1.5 minutes', {
-          cause: { type: 'TIMEOUT', duration: 90000 }
+        throw new Error('Video search request timed out after 3 minutes', {
+          cause: { type: 'TIMEOUT', duration: TIMEOUT_CONFIG.VIDEO_SEARCH }
         } as any);
       }
 
@@ -407,7 +407,7 @@ export class PerplexicaAPI {
     embeddingModelProviders: Record<string, any>;
   }> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout for models
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.MODELS); // 1 minute timeout for models
 
     try {
       const response = await fetch(`${this.baseUrl}/api/models`, {
@@ -434,8 +434,8 @@ export class PerplexicaAPI {
       clearTimeout(timeout);
 
       if (error.name === 'AbortError') {
-        throw new Error('Get models request timed out after 30 seconds', {
-          cause: { type: 'TIMEOUT', duration: 30000 }
+        throw new Error('Get models request timed out after 1 minute', {
+          cause: { type: 'TIMEOUT', duration: TIMEOUT_CONFIG.MODELS }
         } as any);
       }
 
@@ -453,7 +453,7 @@ export class PerplexicaAPI {
    */
   async getConfig(): Promise<any> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout for config
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.CONFIG); // 1 minute timeout for config
 
     try {
       const response = await fetch(`${this.baseUrl}/api/config`, {
@@ -480,8 +480,8 @@ export class PerplexicaAPI {
       clearTimeout(timeout);
 
       if (error.name === 'AbortError') {
-        throw new Error('Get config request timed out after 30 seconds', {
-          cause: { type: 'TIMEOUT', duration: 30000 }
+        throw new Error('Get config request timed out after 1 minute', {
+          cause: { type: 'TIMEOUT', duration: TIMEOUT_CONFIG.CONFIG }
         } as any);
       }
 

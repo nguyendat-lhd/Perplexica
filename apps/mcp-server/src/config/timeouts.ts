@@ -4,16 +4,16 @@
 
 export const TIMEOUT_CONFIG = {
   // API request timeouts (in milliseconds)
-  SEARCH: 120000,        // 2 minutes for regular search
-  STREAM: 180000,        // 3 minutes for streaming requests
-  STREAM_DURATION: 300000, // 5 minutes maximum stream duration
-  IMAGE_SEARCH: 90000,   // 1.5 minutes for image search
-  VIDEO_SEARCH: 90000,   // 1.5 minutes for video search
-  MODELS: 30000,         // 30 seconds for models endpoint
-  CONFIG: 30000,         // 30 seconds for config endpoint
+  SEARCH: 180000,        // 3 minutes for regular search (increased from 2 minutes)
+  STREAM: 300000,        // 5 minutes for streaming requests (increased from 3 minutes)
+  STREAM_DURATION: 420000, // 7 minutes maximum stream duration (increased from 5 minutes)
+  IMAGE_SEARCH: 180000,  // 3 minutes for image search (increased from 1.5 minutes)
+  VIDEO_SEARCH: 180000,  // 3 minutes for video search (increased from 1.5 minutes)
+  MODELS: 60000,         // 1 minute for models endpoint (increased from 30 seconds)
+  CONFIG: 60000,         // 1 minute for config endpoint (increased from 30 seconds)
 
   // Connection timeouts
-  CONNECT: 10000,        // 10 seconds to establish connection
+  CONNECT: 15000,        // 15 seconds to establish connection (increased from 10 seconds)
 
   // Retry configuration
   MAX_RETRIES: 3,
