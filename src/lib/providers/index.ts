@@ -52,6 +52,7 @@ import {
 } from './lemonade';
 import {
   loadBedrockChatModels,
+  loadBedrockEmbeddingModels,
   PROVIDER_INFO as BedrockInfo,
 } from './bedrock';
 
@@ -110,6 +111,7 @@ export const embeddingModelProviders: Record<
   aimlapi: loadAimlApiEmbeddingModels,
   lmstudio: loadLMStudioEmbeddingsModels,
   lemonade: loadLemonadeEmbeddingModels,
+  bedrock: loadBedrockEmbeddingModels,
 };
 
 export const getAvailableChatModelProviders = async () => {

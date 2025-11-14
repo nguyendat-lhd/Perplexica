@@ -448,31 +448,60 @@ class MetaSearchAgent implements MetaSearchAgentType {
     stream: AsyncGenerator<StreamEvent, any, any>,
     emitter: eventEmitter,
   ) {
-    for await (const event of stream) {
-      if (
-        event.event === 'on_chain_end' &&
-        event.name === 'FinalSourceRetriever'
-      ) {
-        emitter.emit(
-          'data',
-          JSON.stringify({ type: 'sources', data: event.data.output }),
-        );
+    try {
+      let hasResponse = false;
+      let hasSources = false;
+      
+      for await (const event of stream) {
+        // Debug logging
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[MetaSearchAgent] Stream event:', event.event, event.name);
+        }
+        
+        if (
+          event.event === 'on_chain_end' &&
+          event.name === 'FinalSourceRetriever'
+        ) {
+          hasSources = true;
+          emitter.emit(
+            'data',
+            JSON.stringify({ type: 'sources', data: event.data.output }),
+          );
+        }
+        if (
+          event.event === 'on_chain_stream' &&
+          event.name === 'FinalResponseGenerator'
+        ) {
+          hasResponse = true;
+          emitter.emit(
+            'data',
+            JSON.stringify({ type: 'response', data: event.data.chunk }),
+          );
+        }
+        if (
+          event.event === 'on_chain_end' &&
+          event.name === 'FinalResponseGenerator'
+        ) {
+          emitter.emit('end');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[MetaSearchAgent] Stream ended. Had response:', hasResponse, 'Had sources:', hasSources);
+          }
+        }
       }
-      if (
-        event.event === 'on_chain_stream' &&
-        event.name === 'FinalResponseGenerator'
-      ) {
-        emitter.emit(
-          'data',
-          JSON.stringify({ type: 'response', data: event.data.chunk }),
-        );
-      }
-      if (
-        event.event === 'on_chain_end' &&
-        event.name === 'FinalResponseGenerator'
-      ) {
+      
+      // If stream ended without emitting end event, emit it manually
+      if (!hasResponse && !hasSources) {
+        console.warn('[MetaSearchAgent] Stream ended without response or sources');
         emitter.emit('end');
       }
+    } catch (error: any) {
+      console.error('Error in handleStream:', error);
+      console.error('Error stack:', error.stack);
+      emitter.emit(
+        'data',
+        JSON.stringify({ type: 'error', data: error.message || 'Unknown error occurred' }),
+      );
+      emitter.emit('end');
     }
   }
 
@@ -505,7 +534,16 @@ class MetaSearchAgent implements MetaSearchAgentType {
       },
     );
 
-    this.handleStream(stream, emitter);
+    // Handle stream asynchronously - don't await to return emitter immediately
+    // but ensure errors are caught
+    this.handleStream(stream, emitter).catch((error) => {
+      console.error('Error in handleStream promise:', error);
+      emitter.emit(
+        'data',
+        JSON.stringify({ type: 'error', data: error.message || 'Stream processing error' }),
+      );
+      emitter.emit('end');
+    });
 
     return emitter;
   }

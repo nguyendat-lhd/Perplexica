@@ -15,9 +15,9 @@ API_KEY = ""
 API_KEY = ""
 
 [MODELS.CUSTOM_OPENAI]
-API_KEY = "7864229fc2c1456691354b14fc0bf409.CVcNCXDV450XMBKI"
-API_URL = "https://api.z.ai/api/coding/paas/v4"
-MODEL_NAME = "glm-4.5"
+API_KEY = ""
+API_URL = ""
+MODEL_NAME = ""
 
 [MODELS.OLLAMA]
 API_URL = ""
@@ -35,5 +35,10 @@ API_URL = ""
 API_URL = ""
 API_KEY = ""
 
+[MODELS.BEDROCK]
+ACCESS_KEY_ID = ""
+SECRET_ACCESS_KEY = ""
+REGION = "ap-southeast-1"
+
 [API_ENDPOINTS]
-SEARXNG = "http://searxng.railway.internal:8080"
+SEARXNG = "http://13.228.19.21:4000"

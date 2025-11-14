@@ -140,7 +140,14 @@ const checkConfig = async (
           return setHasError(true);
         }
 
-        chatModel = Object.keys(chatModelProviders[chatModelProvider])[0];
+        // Prefer APAC model if available for Bedrock provider
+        const availableModels = Object.keys(chatModelProviders[chatModelProvider]);
+        if (chatModelProvider === 'bedrock') {
+          const apacModel = availableModels.find(key => key.includes('apac.'));
+          chatModel = apacModel || availableModels[0];
+        } else {
+          chatModel = availableModels[0];
+        }
       }
 
       if (!embeddingModel || !embeddingModelProvider) {
@@ -605,7 +612,13 @@ export const ChatProvider = ({
     ]);
 
     const messageHandler = async (data: any) => {
+      // Debug logging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[useChat] Received message:', data.type, data.messageId || 'no-id');
+      }
+      
       if (data.type === 'error') {
+        console.error('[useChat] Error:', data.data);
         toast.error(data.data);
         setLoading(false);
         return;
@@ -628,6 +641,11 @@ export const ChatProvider = ({
       }
 
       if (data.type === 'message') {
+        // Skip empty messages
+        if (!data.data || data.data.trim() === '') {
+          return;
+        }
+        
         if (!added) {
           setMessages((prevMessages) => [
             ...prevMessages,
@@ -770,12 +788,17 @@ export const ChatProvider = ({
         const messages = partialChunk.split('\n');
         for (const msg of messages) {
           if (!msg.trim()) continue;
-          const json = JSON.parse(msg);
-          messageHandler(json);
+          try {
+            const json = JSON.parse(msg);
+            messageHandler(json);
+          } catch (parseError) {
+            // Skip invalid JSON lines
+            console.warn('Failed to parse JSON line:', msg.substring(0, 100));
+          }
         }
         partialChunk = '';
       } catch (error) {
-        console.warn('Incomplete JSON, waiting for next chunk...');
+        console.warn('Incomplete JSON, waiting for next chunk...', error);
       }
     }
   };

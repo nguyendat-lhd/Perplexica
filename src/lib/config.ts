@@ -181,11 +181,32 @@ export const getLemonadeApiEndpoint = () =>
 
 export const getLemonadeApiKey = () => loadConfig().MODELS.LEMONADE.API_KEY;
 
-export const getBedrockAccessKeyId = () => loadConfig().MODELS.BEDROCK.ACCESS_KEY_ID;
+export const getBedrockAccessKeyId = () => {
+  try {
+    const value = loadConfig().MODELS.BEDROCK?.ACCESS_KEY_ID || '';
+    return typeof value === 'string' ? value.trim() : '';
+  } catch {
+    return '';
+  }
+};
 
-export const getBedrockSecretAccessKey = () => loadConfig().MODELS.BEDROCK.SECRET_ACCESS_KEY;
+export const getBedrockSecretAccessKey = () => {
+  try {
+    const value = loadConfig().MODELS.BEDROCK?.SECRET_ACCESS_KEY || '';
+    return typeof value === 'string' ? value.trim() : '';
+  } catch {
+    return '';
+  }
+};
 
-export const getBedrockRegion = () => loadConfig().MODELS.BEDROCK.REGION;
+export const getBedrockRegion = () => {
+  try {
+    const value = loadConfig().MODELS.BEDROCK?.REGION || '';
+    return typeof value === 'string' ? value.trim() : '';
+  } catch {
+    return '';
+  }
+};
 
 const mergeConfigs = (current: any, update: any): any => {
   if (update === null || update === undefined) {
