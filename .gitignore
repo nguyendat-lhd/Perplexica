@@ -21,7 +21,7 @@ dist/
 .env.production.local
 
 # Config files
-# config.toml - Removed from gitignore to allow deployment
+config.toml  # Local config with credentials - DO NOT COMMIT
 
 # Log files
 logs/
