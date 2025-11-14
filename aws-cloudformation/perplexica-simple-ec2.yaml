@@ -342,7 +342,8 @@ Resources:
                   context: .
                   dockerfile: app.dockerfile
                 environment:
-                  - SEARXNG_API_URL=http://searxng:8080
+                  # SEARXNG_API_URL removed - now using config.toml instead
+                  # - SEARXNG_API_URL=http://searxng:8080
                   - DATA_DIR=/home/perplexica
                 ports:
                   - 3000:3000

@@ -153,8 +153,16 @@ export const getAnthropicApiKey = () => loadConfig().MODELS.ANTHROPIC.API_KEY;
 
 export const getGeminiApiKey = () => loadConfig().MODELS.GEMINI.API_KEY;
 
-export const getSearxngApiEndpoint = () =>
-  process.env.SEARXNG_API_URL || loadConfig().API_ENDPOINTS.SEARXNG;
+export const getSearxngApiEndpoint = () => {
+  // Priority: config.toml first, then environment variable as fallback
+  // This ensures config.toml is always used when available
+  const configValue = loadConfig().API_ENDPOINTS?.SEARXNG;
+  if (configValue && configValue.trim() !== '') {
+    return configValue;
+  }
+  // Fallback to environment variable if config.toml is empty
+  return process.env.SEARXNG_API_URL || '';
+};
 
 export const getOllamaApiEndpoint = () => loadConfig().MODELS.OLLAMA.API_URL;
 

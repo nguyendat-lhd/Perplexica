@@ -677,8 +677,10 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: perplexica-web
           Environment:
-            - Name: SEARXNG_API_URL
-              Value: !Sub 'http://${SearXNGService.Name}:8080'
+            # SEARXNG_API_URL removed - now using config.toml instead
+            # config.toml is mounted via EFS and will be used with priority
+            # - Name: SEARXNG_API_URL
+            #   Value: !Sub 'http://${SearXNGService.Name}:8080'
             - Name: DATA_DIR
               Value: /home/perplexica
             - Name: NODE_ENV
