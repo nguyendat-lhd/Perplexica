@@ -38,4 +38,5 @@ Thumbs.db
 db.sqlite
 /searxng
 
-certificates
+certificates/config.toml
+config.toml
