@@ -52,6 +52,11 @@ interface Config {
       API_KEY: string;
       MODEL_NAME: string;
     };
+    BEDROCK: {
+      ACCESS_KEY_ID: string;
+      SECRET_ACCESS_KEY: string;
+      REGION: string;
+    };
   };
   API_ENDPOINTS: {
     SEARXNG: string;
@@ -114,6 +119,11 @@ API_URL = ""
 API_URL = ""
 API_KEY = ""
 
+[MODELS.BEDROCK]
+ACCESS_KEY_ID = ""
+SECRET_ACCESS_KEY = ""
+REGION = ""
+
 [API_ENDPOINTS]
 SEARXNG = ""
 `;
@@ -170,6 +180,12 @@ export const getLemonadeApiEndpoint = () =>
   loadConfig().MODELS.LEMONADE.API_URL;
 
 export const getLemonadeApiKey = () => loadConfig().MODELS.LEMONADE.API_KEY;
+
+export const getBedrockAccessKeyId = () => loadConfig().MODELS.BEDROCK.ACCESS_KEY_ID;
+
+export const getBedrockSecretAccessKey = () => loadConfig().MODELS.BEDROCK.SECRET_ACCESS_KEY;
+
+export const getBedrockRegion = () => loadConfig().MODELS.BEDROCK.REGION;
 
 const mergeConfigs = (current: any, update: any): any => {
   if (update === null || update === undefined) {

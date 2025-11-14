@@ -14,6 +14,9 @@ import {
   getLemonadeApiKey,
   updateConfig,
   getOllamaApiKey,
+  getBedrockAccessKeyId,
+  getBedrockSecretAccessKey,
+  getBedrockRegion,
 } from '@/lib/config';
 import {
   getAvailableChatModelProviders,
@@ -74,6 +77,9 @@ export const GET = async (req: Request) => {
     config['customOpenaiApiUrl'] = getCustomOpenaiApiUrl();
     config['customOpenaiApiKey'] = getCustomOpenaiApiKey();
     config['customOpenaiModelName'] = getCustomOpenaiModelName();
+    config['bedrockAccessKeyId'] = getBedrockAccessKeyId();
+    config['bedrockSecretAccessKey'] = getBedrockSecretAccessKey();
+    config['bedrockRegion'] = getBedrockRegion();
 
     return Response.json({ ...config }, { status: 200 });
   } catch (err) {
@@ -124,6 +130,11 @@ export const POST = async (req: Request) => {
           API_URL: config.customOpenaiApiUrl,
           API_KEY: config.customOpenaiApiKey,
           MODEL_NAME: config.customOpenaiModelName,
+        },
+        BEDROCK: {
+          ACCESS_KEY_ID: config.bedrockAccessKeyId,
+          SECRET_ACCESS_KEY: config.bedrockSecretAccessKey,
+          REGION: config.bedrockRegion,
         },
       },
     };

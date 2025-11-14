@@ -30,6 +30,9 @@ interface SettingsType {
   customOpenaiApiKey: string;
   customOpenaiApiUrl: string;
   customOpenaiModelName: string;
+  bedrockAccessKeyId: string;
+  bedrockSecretAccessKey: string;
+  bedrockRegion: string;
 }
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -951,6 +954,67 @@ const Page = () => {
                       }));
                     }}
                     onSave={(value) => saveConfig('lmStudioApiUrl', value)}
+                  />
+                </div>
+              </div>
+            </SettingsSection>
+
+            <SettingsSection title="AWS Bedrock">
+              <div className="flex flex-col space-y-4">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-black/70 dark:text-white/70 text-sm">
+                    AWS Access Key ID
+                  </p>
+                  <Input
+                    type="text"
+                    placeholder="AWS Access Key ID"
+                    value={config.bedrockAccessKeyId || ''}
+                    isSaving={savingStates['bedrockAccessKeyId']}
+                    onChange={(e) => {
+                      setConfig((prev) => ({
+                        ...prev!,
+                        bedrockAccessKeyId: e.target.value,
+                      }));
+                    }}
+                    onSave={(value) => saveConfig('bedrockAccessKeyId', value)}
+                  />
+                </div>
+
+                <div className="flex flex-col space-y-1">
+                  <p className="text-black/70 dark:text-white/70 text-sm">
+                    AWS Secret Access Key
+                  </p>
+                  <Input
+                    type="password"
+                    placeholder="AWS Secret Access Key"
+                    value={config.bedrockSecretAccessKey || ''}
+                    isSaving={savingStates['bedrockSecretAccessKey']}
+                    onChange={(e) => {
+                      setConfig((prev) => ({
+                        ...prev!,
+                        bedrockSecretAccessKey: e.target.value,
+                      }));
+                    }}
+                    onSave={(value) => saveConfig('bedrockSecretAccessKey', value)}
+                  />
+                </div>
+
+                <div className="flex flex-col space-y-1">
+                  <p className="text-black/70 dark:text-white/70 text-sm">
+                    AWS Region
+                  </p>
+                  <Input
+                    type="text"
+                    placeholder="e.g., us-east-1"
+                    value={config.bedrockRegion || ''}
+                    isSaving={savingStates['bedrockRegion']}
+                    onChange={(e) => {
+                      setConfig((prev) => ({
+                        ...prev!,
+                        bedrockRegion: e.target.value,
+                      }));
+                    }}
+                    onSave={(value) => saveConfig('bedrockRegion', value)}
                   />
                 </div>
               </div>

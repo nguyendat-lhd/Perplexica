@@ -1,0 +1,967 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Perplexica Stack - MCP Server, Web App, and SearXNG on AWS ECS Fargate'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [production, staging, development]
+    Description: Environment name
+  
+  PerplexicaImage:
+    Type: String
+    Description: ECR image URI for Perplexica web app
+    Default: ''
+  
+  MCPServerImage:
+    Type: String
+    Description: ECR image URI for MCP server
+    Default: ''
+  
+  SearXNGImage:
+    Type: String
+    Description: Docker image for SearXNG
+    Default: 'searxng/searxng:latest'
+  
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Optional domain name for ALB (leave empty if not using custom domain)
+  
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM certificate ARN for HTTPS (required if DomainName is set)
+  
+  UseEC2:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Use EC2 instances instead of Fargate for cost savings (recommended for dev)
+  
+  EC2InstanceType:
+    Type: String
+    Default: 't3.small'
+    AllowedValues: ['t3.nano', 't3.micro', 't3.small', 't3.medium']
+    Description: EC2 instance type (only used if UseEC2=true)
+  
+  UseSpotInstances:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Use Spot instances for EC2 (cheaper but can be interrupted)
+
+Mappings:
+  InstanceTypeMap:
+    production:
+      MCPCpu: 256
+      MCPMemory: 512
+      WebCpu: 512
+      WebMemory: 1024
+      SearXNGCpu: 256
+      SearXNGMemory: 512
+    staging:
+      MCPCpu: 256
+      MCPMemory: 512
+      WebCpu: 512
+      WebMemory: 1024
+      SearXNGCpu: 256
+      SearXNGMemory: 512
+    development:
+      MCPCpu: 256
+      MCPMemory: 512
+      WebCpu: 256
+      WebMemory: 512
+      SearXNGCpu: 256
+      SearXNGMemory: 512
+
+Resources:
+  # VPC and Networking
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-vpc'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-igw'
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-public-subnet-1'
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-public-subnet-2'
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.11.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-private-subnet-1'
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.0.12.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-private-subnet-2'
+
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-nat-eip-1'
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-nat-eip-2'
+
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-nat-1'
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-nat-2'
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-public-rt'
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-private-rt-1'
+
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-private-rt-2'
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+
+  # Security Groups
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-perplexica-alb-sg'
+      GroupDescription: Security group for Application Load Balancer
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-alb-sg'
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-perplexica-ecs-sg'
+      GroupDescription: Security group for ECS tasks
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: Perplexica web app
+        - IpProtocol: tcp
+          FromPort: 3001
+          ToPort: 3001
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: MCP server
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: SearXNG
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+          Description: SearXNG internal access
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-ecs-sg'
+
+  EFSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-perplexica-efs-sg'
+      GroupDescription: Security group for EFS
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+          Description: NFS access from ECS tasks
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-efs-sg'
+
+  # EFS File System
+  PerplexicaEFS:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      ThroughputMode: bursting
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-efs'
+        - Key: Environment
+          Value: !Ref Environment
+
+  EFSMountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref PerplexicaEFS
+      SubnetId: !Ref PrivateSubnet1
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
+
+  EFSMountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref PerplexicaEFS
+      SubnetId: !Ref PrivateSubnet2
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
+
+  # ECR Repositories
+  PerplexicaECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${Environment}-perplexica-web'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  MCPServerECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${Environment}-perplexica-mcp-server'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  # CloudWatch Log Groups
+  PerplexicaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${Environment}-perplexica-web'
+      RetentionInDays: 7
+
+  MCPServerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${Environment}-perplexica-mcp-server'
+      RetentionInDays: 7
+
+  SearXNGLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${Environment}-perplexica-searxng'
+      RetentionInDays: 7
+
+  # IAM Roles
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${Environment}-perplexica-ecs-task-execution-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: EFSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticfilesystem:ClientMount
+                  - elasticfilesystem:ClientWrite
+                  - elasticfilesystem:ClientRootAccess
+                Resource: !GetAtt PerplexicaEFS.Arn
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${Environment}-perplexica-ecs-task-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  # ECS Cluster
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${Environment}-perplexica-cluster'
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 0
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${Environment}-perplexica-alb'
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-alb'
+
+  ALBListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: 443
+            StatusCode: HTTP_301
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  ALBListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasCertificate
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref PerplexicaTargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+
+  # Target Groups
+  PerplexicaTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${Environment}-perplexica-web-tg'
+      Port: 3000
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: 200-399
+
+  MCPServerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${Environment}-perplexica-mcp-tg'
+      Port: 3001
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+
+  SearXNGTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${Environment}-perplexica-searxng-tg'
+      Port: 8080
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+
+  # ALB Listener Rules
+  MCPServerListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Condition: HasCertificate
+    Properties:
+      ListenerArn: !Ref ALBListenerHTTPS
+      Priority: 100
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /mcp/*
+            - /v1/*
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref MCPServerTargetGroup
+
+  SearXNGListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Condition: HasCertificate
+    Properties:
+      ListenerArn: !Ref ALBListenerHTTPS
+      Priority: 200
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /searxng/*
+      Actions:
+        - Type: rewrite
+          RewriteConfig:
+            Target:
+              Type: path-pattern
+              Value: /
+          ForwardConfig:
+            TargetGroups:
+              - TargetGroupArn: !Ref SearXNGTargetGroup
+                Weight: 1
+
+  # ECS Task Definitions
+  SearXNGTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${Environment}-perplexica-searxng'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !FindInMap [InstanceTypeMap, !Ref Environment, SearXNGCpu]
+      Memory: !FindInMap [InstanceTypeMap, !Ref Environment, SearXNGMemory]
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: searxng
+          Image: !Ref SearXNGImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref SearXNGLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: searxng
+          Environment:
+            - Name: SEARXNG_HOSTNAME
+              Value: !If [HasDomain, !Ref DomainName, !GetAtt ApplicationLoadBalancer.DNSName]
+
+  PerplexicaTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${Environment}-perplexica-web'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !FindInMap [InstanceTypeMap, !Ref Environment, WebCpu]
+      Memory: !FindInMap [InstanceTypeMap, !Ref Environment, WebMemory]
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      Volumes:
+        - Name: perplexica-data
+          EfsVolumeConfiguration:
+            FileSystemId: !Ref PerplexicaEFS
+            RootDirectory: /perplexica-data
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref PerplexicaDataAccessPoint
+              Iam: ENABLED
+        - Name: perplexica-uploads
+          EfsVolumeConfiguration:
+            FileSystemId: !Ref PerplexicaEFS
+            RootDirectory: /perplexica-uploads
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref PerplexicaUploadsAccessPoint
+              Iam: ENABLED
+      ContainerDefinitions:
+        - Name: perplexica-web
+          Image: !If
+            - HasPerplexicaImage
+            - !Ref PerplexicaImage
+            - !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${PerplexicaECR}:latest'
+          Essential: true
+          PortMappings:
+            - ContainerPort: 3000
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref PerplexicaLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: perplexica-web
+          Environment:
+            - Name: SEARXNG_API_URL
+              Value: !Sub 'http://${SearXNGService.Name}:8080'
+            - Name: DATA_DIR
+              Value: /home/perplexica
+            - Name: NODE_ENV
+              Value: production
+          MountPoints:
+            - SourceVolume: perplexica-data
+              ContainerPath: /home/perplexica/data
+              ReadOnly: false
+            - SourceVolume: perplexica-uploads
+              ContainerPath: /home/perplexica/uploads
+              ReadOnly: false
+
+  MCPServerTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${Environment}-perplexica-mcp-server'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !FindInMap [InstanceTypeMap, !Ref Environment, MCPCpu]
+      Memory: !FindInMap [InstanceTypeMap, !Ref Environment, MCPMemory]
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: mcp-server
+          Image: !If
+            - HasMCPServerImage
+            - !Ref MCPServerImage
+            - !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MCPServerECR}:latest'
+          Essential: true
+          PortMappings:
+            - ContainerPort: 3001
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref MCPServerLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: mcp-server
+          Environment:
+            - Name: PORT
+              Value: '3001'
+            - Name: PERPLEXICA_BASE_URL
+              Value: !Sub 'http://${PerplexicaService.Name}:3000'
+            - Name: MCP_ALLOWED_HOSTS
+              Value: !If
+                - HasDomain
+                - !Ref DomainName
+                - !GetAtt ApplicationLoadBalancer.DNSName
+            - Name: MCP_ALLOWED_ORIGINS
+              Value: !If
+                - HasDomain
+                - !Sub 'https://${DomainName}'
+                - !Sub 'https://${ApplicationLoadBalancer.DNSName}'
+
+  # EFS Access Points
+  PerplexicaDataAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref PerplexicaEFS
+      PosixUser:
+        Uid: 1000
+        Gid: 1000
+      RootDirectory:
+        Path: /perplexica-data
+        CreationInfo:
+          OwnerUid: 1000
+          OwnerGid: 1000
+          Permissions: '755'
+
+  PerplexicaUploadsAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref PerplexicaEFS
+      PosixUser:
+        Uid: 1000
+        Gid: 1000
+      RootDirectory:
+        Path: /perplexica-uploads
+        CreationInfo:
+          OwnerUid: 1000
+          OwnerGid: 1000
+          Permissions: '755'
+
+  # ECS Services
+  SearXNGService:
+    Type: AWS::ECS::Service
+    DependsOn: SearXNGTaskDefinition
+    Properties:
+      ServiceName: !Sub '${Environment}-perplexica-searxng'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref SearXNGTaskDefinition
+      DesiredCount: 1
+      LaunchType: !If [UseEC2, '', 'FARGATE']
+      NetworkConfiguration: !If
+        - UseEC2
+        - !Ref AWS::NoValue
+        - AwsvpcConfiguration:
+            AssignPublicIp: DISABLED
+            Subnets:
+              - !Ref PrivateSubnet1
+              - !Ref PrivateSubnet2
+            SecurityGroups:
+              - !Ref ECSSecurityGroup
+      PlacementConstraints: !If
+        - UseEC2
+        - []
+        - !Ref AWS::NoValue
+      PlacementStrategies: !If
+        - UseEC2
+        - - Type: spread
+            Field: instanceId
+        - !Ref AWS::NoValue
+      NetworkConfiguration: !If
+        - UseEC2
+        - !Ref AWS::NoValue
+        -
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+      LoadBalancers:
+        - ContainerName: searxng
+          ContainerPort: 8080
+          TargetGroupArn: !Ref SearXNGTargetGroup
+      HealthCheckGracePeriodSeconds: 60
+
+  PerplexicaService:
+    Type: AWS::ECS::Service
+    DependsOn: PerplexicaTaskDefinition
+    Properties:
+      ServiceName: !Sub '${Environment}-perplexica-web'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref PerplexicaTaskDefinition
+      DesiredCount: 1
+      LaunchType: !If [UseEC2, '', 'FARGATE']
+      NetworkConfiguration: !If
+        - UseEC2
+        - !Ref AWS::NoValue
+        - AwsvpcConfiguration:
+            AssignPublicIp: DISABLED
+            Subnets:
+              - !Ref PrivateSubnet1
+              - !Ref PrivateSubnet2
+            SecurityGroups:
+              - !Ref ECSSecurityGroup
+      PlacementConstraints: !If
+        - UseEC2
+        - []
+        - !Ref AWS::NoValue
+      PlacementStrategies: !If
+        - UseEC2
+        - - Type: spread
+            Field: instanceId
+        - !Ref AWS::NoValue
+      NetworkConfiguration: !If
+        - UseEC2
+        - !Ref AWS::NoValue
+        -
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+      LoadBalancers:
+        - ContainerName: perplexica-web
+          ContainerPort: 3000
+          TargetGroupArn: !Ref PerplexicaTargetGroup
+      HealthCheckGracePeriodSeconds: 120
+
+  MCPServerService:
+    Type: AWS::ECS::Service
+    DependsOn: MCPServerTaskDefinition
+    Properties:
+      ServiceName: !Sub '${Environment}-perplexica-mcp-server'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref MCPServerTaskDefinition
+      DesiredCount: 1
+      LaunchType: !If [UseEC2, '', 'FARGATE']
+      NetworkConfiguration: !If
+        - UseEC2
+        - !Ref AWS::NoValue
+        - AwsvpcConfiguration:
+            AssignPublicIp: DISABLED
+            Subnets:
+              - !Ref PrivateSubnet1
+              - !Ref PrivateSubnet2
+            SecurityGroups:
+              - !Ref ECSSecurityGroup
+      PlacementConstraints: !If
+        - UseEC2
+        - []
+        - !Ref AWS::NoValue
+      PlacementStrategies: !If
+        - UseEC2
+        - - Type: spread
+            Field: instanceId
+        - !Ref AWS::NoValue
+      NetworkConfiguration: !If
+        - UseEC2
+        - !Ref AWS::NoValue
+        -
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+      LoadBalancers:
+        - ContainerName: mcp-server
+          ContainerPort: 3001
+          TargetGroupArn: !Ref MCPServerTargetGroup
+      HealthCheckGracePeriodSeconds: 60
+
+Conditions:
+  HasDomain: !Not [!Equals [!Ref DomainName, '']]
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
+  HasPerplexicaImage: !Not [!Equals [!Ref PerplexicaImage, '']]
+  HasMCPServerImage: !Not [!Equals [!Ref MCPServerImage, '']]
+  UseEC2: !Equals [!Ref UseEC2, 'true']
+  UseSpot: !Equals [!Ref UseSpotInstances, 'true']
+
+Outputs:
+  VPCId:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${Environment}-perplexica-vpc-id'
+
+  ClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub '${Environment}-perplexica-cluster-name'
+
+  ALBDNSName:
+    Description: Application Load Balancer DNS Name
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub '${Environment}-perplexica-alb-dns'
+
+  ALBURL:
+    Description: Application Load Balancer URL
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+    Export:
+      Name: !Sub '${Environment}-perplexica-alb-url'
+
+  PerplexicaECRURI:
+    Description: Perplexica ECR Repository URI
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${PerplexicaECR}'
+    Export:
+      Name: !Sub '${Environment}-perplexica-ecr-uri'
+
+  MCPServerECRURI:
+    Description: MCP Server ECR Repository URI
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MCPServerECR}'
+    Export:
+      Name: !Sub '${Environment}-perplexica-mcp-ecr-uri'
+
+  EFSFileSystemId:
+    Description: EFS File System ID
+    Value: !Ref PerplexicaEFS
+    Export:
+      Name: !Sub '${Environment}-perplexica-efs-id'
+
+  PerplexicaServiceName:
+    Description: Perplexica Web Service Name
+    Value: !GetAtt PerplexicaService.Name
+
+  MCPServerServiceName:
+    Description: MCP Server Service Name
+    Value: !GetAtt MCPServerService.Name
+
+  SearXNGServiceName:
+    Description: SearXNG Service Name
+    Value: !GetAtt SearXNGService.Name
+
+  # Note: Deploy monitoring-alarms.yaml stack separately for CloudWatch Alarms and Auto Scaling
+  # See MONITORING_GUIDE.md for instructions
+

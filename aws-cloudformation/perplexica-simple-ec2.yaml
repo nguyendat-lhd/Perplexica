@@ -1,0 +1,468 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Perplexica Stack - Simple EC2 with Docker Compose (Cost Optimized for Dev)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: development
+    AllowedValues: [production, staging, development]
+    Description: Environment name
+  
+  InstanceType:
+    Type: String
+    Default: t3.small
+    AllowedValues: ['t3.nano', 't3.micro', 't3.small', 't3.medium']
+    Description: EC2 instance type
+  
+  UseSpotInstance:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Use Spot instance for cost savings
+  
+  KeyPairName:
+    Type: String
+    Default: ''
+    Description: EC2 Key Pair name for SSH access (optional - recommend using Session Manager instead, leave empty to use Session Manager)
+  
+  ECRImageURI:
+    Type: String
+    Description: ECR image URI for Perplexica (or leave empty to build on instance)
+    Default: ''
+  
+  GitHubRepo:
+    Type: String
+    Description: GitHub repository URL (optional, for auto-deploy)
+    Default: ''
+
+Mappings:
+  InstanceTypeMap:
+    t3.nano:
+      vCPU: 2
+      Memory: 512
+    t3.micro:
+      vCPU: 2
+      Memory: 1024
+    t3.small:
+      vCPU: 2
+      Memory: 2048
+    t3.medium:
+      vCPU: 2
+      Memory: 4096
+
+Resources:
+  # VPC and Networking (Simplified - single AZ for dev)
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-vpc'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-igw'
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-public-subnet'
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-rt'
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnet
+
+  # Security Groups
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-perplexica-ec2-sg'
+      GroupDescription: Security group for EC2 instance
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+          Description: Perplexica web app
+        - IpProtocol: tcp
+          FromPort: 3001
+          ToPort: 3001
+          CidrIp: 0.0.0.0/0
+          Description: MCP server
+        - IpProtocol: tcp
+          FromPort: 4000
+          ToPort: 4000
+          CidrIp: 0.0.0.0/0
+          Description: SearXNG
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-ec2-sg'
+
+  # EFS for persistent data (optional)
+  PerplexicaEFS:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      ThroughputMode: bursting
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-efs'
+
+  EFSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-perplexica-efs-sg'
+      GroupDescription: Security group for EFS
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
+          Description: NFS access from EC2
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-efs-sg'
+
+  EFSMountTarget:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref PerplexicaEFS
+      SubnetId: !Ref PublicSubnet
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
+
+  # ECR Repositories (for storing Docker images)
+  PerplexicaECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${Environment}-perplexica-web'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  MCPServerECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${Environment}-perplexica-mcp-server'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  # IAM Role for EC2
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${Environment}-perplexica-ec2-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: '*'
+        - PolicyName: EFAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticfilesystem:ClientMount
+                  - elasticfilesystem:ClientWrite
+                  - elasticfilesystem:ClientRootAccess
+                Resource: !GetAtt PerplexicaEFS.Arn
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
+
+  # EC2 Instance
+  PerplexicaEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Sub '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}'
+      InstanceType: !Ref InstanceType
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref AWS::NoValue]
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      SubnetId: !Ref PublicSubnet
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            set -e
+            
+            # Update system
+            yum update -y
+            
+            # Install Docker
+            yum install -y docker git
+            systemctl start docker
+            systemctl enable docker
+            usermod -a -G docker ec2-user
+            
+            # Install Docker Compose
+            curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose
+            ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+            
+            # Install EFS utils
+            yum install -y amazon-efs-utils
+            
+            # Create directories
+            mkdir -p /home/ec2-user/perplexica
+            mkdir -p /mnt/efs/data
+            mkdir -p /mnt/efs/uploads
+            
+            # Mount EFS (wait for mount target to be ready)
+            sleep 10  # Wait for mount target to be ready
+            mount -t efs -o tls,iam ${PerplexicaEFS}:/ /mnt/efs || mount -t efs -o tls ${PerplexicaEFS}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs || true
+            
+            # Add to fstab for persistence
+            echo "${PerplexicaEFS}:/ /mnt/efs efs defaults,_netdev,tls,iam 0 0" >> /etc/fstab || true
+            
+            # Login to ECR if ECRImageURI is provided
+            if [ -n "${ECRImageURI}" ] && [ "${ECRImageURI}" != "" ]; then
+              aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+            fi
+            
+            # Create docker-compose.yml
+            APP_IMAGE="${ECRImageURI}"
+            if [ -z "$$APP_IMAGE" ] || [ "$$APP_IMAGE" = "" ]; then
+              APP_IMAGE="itzcrazykns1337/perplexica:main"
+            fi
+            # Escape APP_IMAGE for sed
+            ESCAPED_APP_IMAGE=$(echo "$$APP_IMAGE" | sed 's/[[\.*^$()+?{|]/\\&/g')
+            cat > /home/ec2-user/perplexica/docker-compose.yml << 'DOCKERCOMPOSE_EOF'
+            version: '3.8'
+            
+            services:
+              searxng:
+                image: docker.io/searxng/searxng:latest
+                volumes:
+                  - ./searxng:/etc/searxng:rw
+                ports:
+                  - 4000:8080
+                networks:
+                  - perplexica-network
+                restart: unless-stopped
+            
+              app:
+                image: PLACEHOLDER_APP_IMAGE
+                build:
+                  context: .
+                  dockerfile: app.dockerfile
+                environment:
+                  - SEARXNG_API_URL=http://searxng:8080
+                  - DATA_DIR=/home/perplexica
+                ports:
+                  - 3000:3000
+                networks:
+                  - perplexica-network
+                volumes:
+                  - /mnt/efs/data:/home/perplexica/data
+                  - /mnt/efs/uploads:/home/perplexica/uploads
+                  - ./config.toml:/home/perplexica/config.toml
+                restart: unless-stopped
+                depends_on:
+                  - searxng
+            
+              mcp-server:
+                build:
+                  context: .
+                  dockerfile: apps/mcp-server/Dockerfile
+                ports:
+                  - 3001:3001
+                networks:
+                  - perplexica-network
+                environment:
+                  - PORT=3001
+                  - PERPLEXICA_BASE_URL=http://app:3000
+                restart: unless-stopped
+                depends_on:
+                  - app
+            
+            networks:
+              perplexica-network:
+                driver: bridge
+            DOCKERCOMPOSE_EOF
+            
+            # Replace placeholder with actual image
+            sed -i "s|PLACEHOLDER_APP_IMAGE|$$ESCAPED_APP_IMAGE|g" /home/ec2-user/perplexica/docker-compose.yml
+            
+            # Clone repo if GitHubRepo is provided
+            if [ -n "${GitHubRepo}" ] && [ "${GitHubRepo}" != "" ]; then
+              cd /home/ec2-user/perplexica
+              git clone "${GitHubRepo}" .
+            fi
+            
+            # Copy searxng config if exists
+            if [ -d "/home/ec2-user/perplexica/searxng" ]; then
+              cp -r /home/ec2-user/perplexica/searxng /home/ec2-user/perplexica/
+            fi
+            
+            # Start services
+            cd /home/ec2-user/perplexica
+            docker-compose up -d
+            
+            # Log to CloudWatch
+            echo "Perplexica services started successfully" > /var/log/perplexica-startup.log
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-ec2'
+
+  # Elastic IP (optional, for static IP)
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref PerplexicaEC2Instance
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-perplexica-eip'
+
+Conditions:
+  UseSpot: !Equals [!Ref UseSpotInstance, 'true']
+  HasECRImage: !Not [!Equals [!Ref ECRImageURI, '']]
+  HasGitHubRepo: !Not [!Equals [!Ref GitHubRepo, '']]
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, '']]
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref PerplexicaEC2Instance
+  
+  PublicIP:
+    Description: Public IP address
+    Value: !GetAtt PerplexicaEC2Instance.PublicIp
+  
+  PublicDNS:
+    Description: Public DNS name
+    Value: !GetAtt PerplexicaEC2Instance.PublicDnsName
+  
+  ElasticIP:
+    Description: Elastic IP address
+    Value: !Ref ElasticIP
+  
+  PerplexicaWebURL:
+    Description: Perplexica Web App URL
+    Value: !Sub 'http://${PerplexicaEC2Instance.PublicIp}:3000'
+  
+  MCPServerURL:
+    Description: MCP Server URL
+    Value: !Sub 'http://${PerplexicaEC2Instance.PublicIp}:3001'
+  
+  SearXNGURL:
+    Description: SearXNG URL
+    Value: !Sub 'http://${PerplexicaEC2Instance.PublicIp}:4000'
+  
+  SessionManagerCommand:
+    Description: AWS Session Manager command to connect (Recommended)
+    Value: !Sub 'aws ssm start-session --target ${PerplexicaEC2Instance} --region ${AWS::Region}'
+  
+  SSHCommand:
+    Condition: HasKeyPair
+    Description: SSH command to connect (if key pair provided)
+    Value: !Sub 'ssh -i your-key.pem ec2-user@${PerplexicaEC2Instance.PublicIp}'
+  
+  EFSFileSystemId:
+    Description: EFS File System ID
+    Value: !Ref PerplexicaEFS
+  
+  PerplexicaECRURI:
+    Description: Perplexica Web ECR Repository URI
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${PerplexicaECR}'
+  
+  MCPServerECRURI:
+    Description: MCP Server ECR Repository URI
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MCPServerECR}'
+

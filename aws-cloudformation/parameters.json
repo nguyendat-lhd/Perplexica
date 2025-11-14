@@ -1,0 +1,39 @@
+[
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "production"
+  },
+  {
+    "ParameterKey": "PerplexicaImage",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "MCPServerImage",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "SearXNGImage",
+    "ParameterValue": "searxng/searxng:latest"
+  },
+  {
+    "ParameterKey": "DomainName",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "CertificateArn",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "UseEC2",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "EC2InstanceType",
+    "ParameterValue": "t3.small"
+  },
+  {
+    "ParameterKey": "UseSpotInstances",
+    "ParameterValue": "false"
+  }
+]
+

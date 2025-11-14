@@ -47,6 +47,13 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
+  // Health check endpoint
+  if (req.url === '/health' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', service: 'perplexica-mcp-server' }));
+    return;
+  }
+
   // Only handle /v1/sse endpoint
   if (req.url !== '/v1/sse' && !req.url?.startsWith('/v1/sse')) {
     res.writeHead(404, { 'Content-Type': 'application/json' });

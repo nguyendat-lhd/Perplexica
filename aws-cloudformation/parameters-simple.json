@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "development"
+  },
+  {
+    "ParameterKey": "InstanceType",
+    "ParameterValue": "t3.small"
+  },
+  {
+    "ParameterKey": "UseSpotInstance",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "KeyPairName",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ECRImageURI",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "GitHubRepo",
+    "ParameterValue": ""
+  }
+]

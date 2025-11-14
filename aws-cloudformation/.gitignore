@@ -1,0 +1,15 @@
+# CloudFormation
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Parameters (may contain sensitive data)
+parameters.local.json
+
+# AWS credentials
+.aws/
+
+# Logs
+*.log
+
